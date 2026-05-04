@@ -1,19 +1,18 @@
+SRC := main.py
+
 all: install run
 
 install:
 	uv sync
 
 run:
-	uv run python -m src
-
-visualize:
-	uv run python -m src -v
+	uv run python main.py
 
 help:
-	uv run python -m src -h
+	uv run python main.py -h
 
 debug:
-	uv run python -m pdb -m src
+	uv run python -m pdb main.py
 
 test:
 	uv run pytest tests/
@@ -28,14 +27,14 @@ fclean: clean
 	rm -rf .venv
 
 lint:
-	uv run python -m flake8 src
-	uv run python -m mypy src --warn-return-any --warn-unused-ignores \
-							  --ignore-missing-imports --disallow-untyped-defs \
-							  --check-untyped-defs
+	uv run flake8 $(SRC)
+	uv run mypy $(SRC) --warn-return-any --warn-unused-ignores \
+					   --ignore-missing-imports --disallow-untyped-defs \
+					   --check-untyped-defs
 
 lint-strict:
-	uv run python -m flake8 src
-	uv run python -m mypy src --strict
+	uv run flake8 $(SRC)
+	uv run mypy $(SRC) --strict
 
 re: fclean all
 
