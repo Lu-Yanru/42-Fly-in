@@ -1,4 +1,4 @@
-SRC := main.py
+SRC := main.py parser.py map.py
 
 all: install run
 
@@ -7,6 +7,9 @@ install:
 
 run:
 	uv run python main.py
+
+visualize:
+	uv run python main.py -v
 
 help:
 	uv run python main.py -h
@@ -38,4 +41,4 @@ lint-strict:
 
 re: fclean all
 
-.PHONY: all install run help debug clean fclean lint lint-strict re
+.PHONY: all install run visualize help debug test clean fclean lint lint-strict re

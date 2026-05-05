@@ -83,11 +83,19 @@ Execute the project:
 
     make run
 
+Select map file path:
+
+    uv run python main.py -m map_file_path
+
+Visualize with the graphical interface:
+
+    make visualize
+
 Run the script in debug mode using `pdb`:
 
     make debug
 
-Code linting usin `flake8` and `mypy`:
+Code linting using `flake8` and `mypy`:
 
     make lint
 
