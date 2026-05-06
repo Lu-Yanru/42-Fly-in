@@ -46,15 +46,18 @@ class Connection(BaseModel):
 
     @model_validator(mode="after")
     def validate(self):
-        if self.src == self.dest:
-            raise ValueError("Connection's destination and source cannot be the same!")
+        if self.src == self.dest \
+            or (self.src.x == self.dest.x
+                and self.src.y == self.dest.y):
+            raise ValueError("Connection's destination "
+                             "and source cannot be the same!")
         return self
 
 
 class Map(BaseModel):
     """Represents a map."""
-    nb_drones: int = Field(ge=0)
+    nb_drones: int = Field(gt=0)
     start: Hub
     end: Hub
-    hubs : list[Hub]
-    connection: list[Connection]
+    hubs: list[Hub]
+    connections: list[Connection]

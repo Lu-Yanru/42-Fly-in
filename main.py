@@ -1,6 +1,7 @@
 #!usr/bin/env python3
 
 
+import sys
 from parser import Parser, ParseError
 
 
@@ -9,12 +10,8 @@ def main() -> None:
 
     try:
         map = parser.parse_map()
-        if map.nb_drones == 0:
-            return
     except ParseError as e:
-        print(e)
-
-
+        print(e, file=sys.stderr)
 
 
 if __name__ == "__main__":
