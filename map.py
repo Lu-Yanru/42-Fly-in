@@ -61,3 +61,13 @@ class Map(BaseModel):
     end: Hub
     hubs: list[Hub]
     connections: list[Connection]
+
+    @model_validator(mode="after")
+    def validate(self):
+        if self.start == self.end \
+            or self.start.name == self.end.name \
+            or (self.start.x == self.end.x
+                and self.start.y == self.end.y):
+            raise ValueError("Start and end hub "
+                             "cannot overlap!")
+        return self

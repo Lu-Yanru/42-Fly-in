@@ -29,8 +29,8 @@ class Parser:
             nb_drones = self._get_nb_drones(file)
             start = self._get_start_end_hub(file, nb_drones, True)
             end = self._get_start_end_hub(file, nb_drones, False, True)
-            hubs = self._get_hubs(file, nb_drones)
-            connections = self._get_connections(file)
+            hubs = self._get_hubs(file, nb_drones, start, end)
+            connections = self._get_connections(file, hubs, start, end)
 
             res = Map(
                 nb_drones=nb_drones,
@@ -120,13 +120,33 @@ class Parser:
         return res
 
     def _check_invalid_keys(self, lines: list[str]) -> None:
-        """Check if map contains invalid keys."""
+        """
+        Check if map contains invalid keys.
+        Or if unqiue keys (start_hub, end_hub, nb_drones)
+        are uniquely defined.
+        """
         valid_keys = ["start_hub", "end_hub", "hub", "connection", "nb_drones"]
 
+        count_start = 0
+        count_end = 0
+        count_drones = 0
         for line in lines:
             key = line.split(":")[0].strip()
             if key not in valid_keys:
-                raise ParseError(f"ParseError: {key} is not a valid key.")
+                raise ParseError(f"ParseError: '{key}' is not a valid key.")
+            if key == "start_hub":
+                count_start += 1
+            elif key == "end_hub":
+                count_end += 1
+            elif key == "nb_drones":
+                count_drones += 1
+        
+        if count_start != 1:
+            raise ParseError("ParseError: start_hub not uniquely defined.")
+        if count_end != 1:
+            raise ParseError("ParseError: end_hub not uniquely defined.")
+        if count_drones != 1:
+            raise ParseError("ParseError: nb_drones not uniquely defined.")
 
     def _get_nb_drones(self, lines: list[str]) -> int:
         """
@@ -188,7 +208,7 @@ class Parser:
         """
         Process one line of hub definition and store them in a Hub object.
         """
-        defs = line.split(":")[1].strip().split()
+        defs = line.split(":")[1].strip().split(maxsplit=3)
         if len(defs) != 3 and len(defs) != 4:
             raise ParseError(f"ParseError: {hub} '{line}' "
                              "not correctly defined.")
@@ -225,10 +245,14 @@ class Parser:
 
             keys: list[str] = []
             for option in metadata:
+                if len(option.split("=")) != 2:
+                    raise ParseError(f"ParseError: Invalid {hub} '{hub_name}'"
+                                     " metadata definition.")
+
                 key, value = option.split("=")
                 if key.strip() not in valid_metadata:
                     raise ParseError(f"ParseError: Invalid {hub} '{hub_name}'"
-                                     "metadata definition.")
+                                     " metadata definition.")
                 if key in keys:
                     raise ParseError(f"ParseError: Metadata key '{key}' "
                                      "defined multiple times.")
@@ -261,7 +285,8 @@ class Parser:
             raise ParseError(e)
         return res_hub
 
-    def _get_hubs(self, lines: list[str], nb_drones: int) -> list[Hub]:
+    def _get_hubs(self, lines: list[str], nb_drones: int,
+                  start: Hub, end: Hub) -> list[Hub]:
         """Get a list of hubs besides start and end hubs."""
         hubs: list[Hub] = []
 
@@ -273,32 +298,53 @@ class Parser:
                     raise ParseError(e)
                 hubs.append(res_hub)
 
-        if self._check_unique_hub_name(hubs):
+        if self._check_unique_hub(hubs, start, end):
             return hubs
         else:
-            raise ParseError("ParseError: Hub names are not unique.")
+            raise ParseError("ParseError: Hubs are not unique.")
 
-    def _check_unique_hub_name(self, hubs: list[Hub]) -> bool:
+    def _check_unique_hub(self, hubs: list[Hub],
+                          start: Hub, end: Hub) -> bool:
         """
-        Check if the hub names are unique.
+        Check if the hub are unique
+        (no duplicated names for coordinates).
         Returns True if they are unique, False otherwise.
         """
         names: list[str] = []
+        coordinates: list[tuple[int, int]] = []
+
+        if start.name != end.name:
+            names.append(start.name)
+            names.append(end.name)
+        else:
+            return False
+
+        if (start.x, start.y) != (end.x, end.y):
+            coordinates.append((start.x, start.y))
+            coordinates.append((end.x, end.y))
+        else:
+            return False
+
         for hub in hubs:
             if hub.name in names:
                 return False
             names.append(hub.name)
-        
+
+            if (hub.x, hub.y) in coordinates:
+                return False
+            coordinates.append((hub.x, hub.y))
+
         return True
 
-    def _get_connections(self, lines: list[str]) -> list[Connection]:
+    def _get_connections(self, lines: list[str], hubs: list[Hub],
+                         start: Hub, end: Hub) -> list[Connection]:
         """Get a list of connections defined in the map file."""
         connections: list[Connection] = []
 
         for line in lines:
             if line.startswith("connection"):
                 try:
-                    res_conn = self._process_conn_line(line)
+                    res_conn = self._process_conn_line(line, hubs, start, end)
                 except ParseError as e:
                     raise ParseError(e)
                 connections.append(res_conn)
@@ -308,14 +354,19 @@ class Parser:
         else:
             raise ParseError("ParseError: Duplicate connections.")
 
-    def _process_conn_line(self, line: str, hubs: list[Hub]) -> Connection:
+    def _process_conn_line(self, line: str, hubs: list[Hub],
+                           start: Hub, end: Hub) -> Connection:
         """
         Process a line of connection definition
         and store it in a Connection object.
         """
-        defs = line.split(":")[1].strip().split()
+        defs = line.split(":")[1].strip().split(maxsplit=1)
 
         if len(defs) != 1 and len(defs) != 2:
+            raise ParseError(f"ParseError: Invalid connection '{line}' "
+                             "definiton.")
+
+        if len(defs[0].split("-")) != 2:
             raise ParseError(f"ParseError: Invalid connection '{line}' "
                              "definiton.")
 
@@ -323,47 +374,42 @@ class Parser:
 
         src = None
         dest = None
-        for hub in hubs:
+        all_hubs = hubs + [start, end]
+        for hub in all_hubs:
             if hub.name == hub1_name:
                 src = hub
             elif hub.name == hub2_name:
                 dest = hub
-        
+
         if src is None:
-            raise ParseError(f"ParseError: {hub1_name} is not a defined hub.")
+            raise ParseError(f"ParseError: '{hub1_name}' is not a defined hub.")
         if dest is None:
-            raise ParseError(f"ParseError: {hub2_name} is not a defined hub.")
-        
+            raise ParseError(f"ParseError: '{hub2_name}' is not a defined hub.")
+
         capacity = 1
         if len(defs) == 2:
-            if not defs[3].startswith("[") or not defs[3].endswith("]"):
+            if not defs[1].startswith("[") or not defs[1].endswith("]"):
                 raise ParseError(f"ParseError: Invalid connection '{line}' "
                                  "metadata definition.")
 
-            metadata = defs[3].strip("[]").split()
-            valid_metadata = ["max_link_capacity"]
+            metadata = defs[1].strip("[]").split()
+            if len(metadata) > 1:
+                raise ParseError(f"ParseError: Invalid connection '{line}' "
+                                 "metadata definition.")
+            if len(metadata) == 1:
+                key, value = metadata[0].split("=")
 
-            keys: list[str] = []
-            for option in metadata:
-                key, value = option.split("=")
-                if key.strip() not in valid_metadata:
-                    raise ParseError(f"ParseError: Invalid {hub} '{hub_name}'"
+                if key.strip() != "max_link_capacity":
+                    raise ParseError("ParseError: Invalid connection "
+                                     f"'{line}' "
                                      "metadata definition.")
-                if key in keys:
-                    raise ParseError(f"ParseError: Metadata key '{key}' "
-                                     "defined multiple times.")
-                keys.append(key)
-                if key.strip() == "zone":
-                    zone_type = value
-                elif key.strip() == "color":
-                    color = value
-                elif key.strip() == "max_drones":
-                    try:
-                        max_drones = int(value)
-                    except ValueError:
-                        raise ParseError("ParseError: max_drones definition "
-                                         f"'{value}' for hub '{hub_name}' "
-                                         "is not an integer.")
+
+                try:
+                    capacity = int(value)
+                except ValueError:
+                    raise ParseError("ParseError: max_link_capacity "
+                                     f"in '{line}' is not an integer.")
+
         try:
             return Connection(
                 src=src,
@@ -380,3 +426,13 @@ class Parser:
         Returns True if connections are valid (no duplicates),
         False otherwise.
         """
+        conns: list[tuple[str, str]] = []
+        for conn in connections:
+            c1 = (conn.src.name, conn.dest.name)
+            c2 = (conn.dest.name, conn.src.name)
+            if c1 in conns or c2 in conns:
+                return False
+            conns.append(c1)
+            conns.append(c2)
+
+        return True
