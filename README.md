@@ -57,14 +57,14 @@ To enhance the user experience, a graphical interface is also implemented which 
 
 | Difficulty | Map | Target | Status |
 | 🟢 Easy | Linear path with 2 drones | ≤ 6 turns | ✅ |
-| 🟢 Easy | Simple fork with 3 drones | ≤ 6 turns | ✅ |
-| 🟢 Easy | Basic capacity with 4 drones | ≤ 8 turns | ✅ |
-| 🟡 Medium | Dead end trap with 5 drones | ≤ 15 turns | ✅ |
-| 🟡 Medium | Circular loop with 6 drones | ≤ 20 turns | ✅ |
-| 🟡 Medium | Priority puzzle with 4 drones | ≤ 12 turns | ✅ |
-| 🔴 Hard | Maze nightmare with 8 drones | ≤ 45 turns | ✅ |
-| 🔴 Hard | Capacity hell with 12 drones | ≤ 60 turns | ✅ |
-| 🔴 Hard | Ultimate challenge with 15 drones | ≤ 35 turns | ✅ |
+| 🟢 Easy | Simple fork with 4 drones | ≤ 8 turns | ✅ |
+| 🟢 Easy | Basic capacity with 4 drones | ≤ 6 turns | ✅ |
+| 🟡 Medium | Dead end trap with 5 drones | ≤ 12 turns | ✅ |
+| 🟡 Medium | Circular loop with 6 drones | ≤ 15 turns | ✅ |
+| 🟡 Medium | Priority puzzle with 5 drones | ≤ 12 turns | ✅ |
+| 🔴 Hard | Maze nightmare with 8 drones | ≤ 30 turns | ✅ |
+| 🔴 Hard | Capacity hell with 12 drones | ≤ 35 turns | ✅ |
+| 🔴 Hard | Ultimate challenge with 15 drones | ≤ 45 turns | ✅ |
 | 🏆 Challenger | The Impossible Dream with 25 drones | ≤ 45 turns | ✅ |
 
 ## Instructions
@@ -144,3 +144,4 @@ traverse this connection simultaneously: `max_link_capacity=<number>` (default: 
 - Comments start with `#` are ignored.
 
 ## Resources
+- [Youtube Graph Theory Playlist by WilliamFiset](https://www.youtube.com/playlist?list=PLDV1Zeh2NRsDGO4--qE8yH72HFL1Km93P)
