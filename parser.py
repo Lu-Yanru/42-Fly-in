@@ -140,7 +140,7 @@ class Parser:
                 count_end += 1
             elif key == "nb_drones":
                 count_drones += 1
-        
+
         if count_start != 1:
             raise ParseError("ParseError: start_hub not uniquely defined.")
         if count_end != 1:
@@ -235,13 +235,7 @@ class Parser:
                                  "metadata definition.")
 
             metadata = defs[3].strip("[]").split()
-            if is_start or is_end:
-                valid_metadata = ["color"]
-                if len(metadata) > 1:
-                    raise ParseError(f"ParseError: Invalid {hub} "
-                                     "metadata definition.")
-            else:
-                valid_metadata = ["color", "zone", "max_drones"]
+            valid_metadata = ["color", "zone", "max_drones"]
 
             keys: list[str] = []
             for option in metadata:
@@ -268,6 +262,10 @@ class Parser:
                         raise ParseError("ParseError: max_drones definition "
                                          f"'{value}' for hub '{hub_name}' "
                                          "is not an integer.")
+                
+                if (is_start or is_end) and zone_type == ZoneType.BLOCK:
+                    raise ParseError(f"ParseError: {hub}"
+                                     "cannot be blocked.")
 
         try:
             res_hub = Hub(
@@ -349,10 +347,12 @@ class Parser:
                     raise ParseError(e)
                 connections.append(res_conn)
 
-        if self._check_duplicate_connections(connections):
-            return connections
-        else:
+        if not self._check_duplicate_connections(connections):
             raise ParseError("ParseError: Duplicate connections.")
+
+        self._add_adjacencies(hubs, start, end, connections)
+
+        return connections
 
     def _process_conn_line(self, line: str, hubs: list[Hub],
                            start: Hub, end: Hub) -> Connection:
@@ -382,9 +382,11 @@ class Parser:
                 dest = hub
 
         if src is None:
-            raise ParseError(f"ParseError: '{hub1_name}' is not a defined hub.")
+            raise ParseError(f"ParseError: '{hub1_name}' "
+                             "is not a defined hub.")
         if dest is None:
-            raise ParseError(f"ParseError: '{hub2_name}' is not a defined hub.")
+            raise ParseError(f"ParseError: '{hub2_name}' "
+                             "is not a defined hub.")
 
         capacity = 1
         if len(defs) == 2:
@@ -436,3 +438,25 @@ class Parser:
             conns.append(c2)
 
         return True
+
+    def _add_adjacencies(self, hubs: list[Hub],
+                         start: Hub, end: Hub,
+                         connections: list[Connection]) -> None:
+        """
+        Adds an adjacency list (dict[Hub, cost]) to each hub.
+        """
+        all_hubs = hubs + [start, end]
+        for conn in connections:
+            for hub in all_hubs:
+                if conn.src == hub:
+                    if conn.dest.zone_type == ZoneType.NORMAL:
+                        hub.adj[conn.dest] = 1
+                    elif conn.dest.zone_type == ZoneType.PRIORITY:
+                        hub.adj[conn.dest] = 0.8
+                    elif conn.dest.zone_type == ZoneType.RESTRICTED:
+                        hub.adj[conn.dest] = 2
+                    elif conn.dest.zone_type == ZoneType.BLOCK:
+                        hub.adj[conn.dest] = 999
+                    else:
+                        raise ParseError(f"ParseError: Hub '{hub.name}' "
+                                         f"has invalid zone type {hub.zone}.")

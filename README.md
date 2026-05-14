@@ -4,6 +4,8 @@
 ## Description
 This project implements an efficient drone routing system. It reads a map file representing a network of zones (hubs), and navigates a fleet of drones from a central **start hub** to a target **end hub** in the fewest possible simulation turns.
 
+This is essentially a [multi-agent pathfinding (MAPF)](https://en.wikipedia.org/wiki/Multi-agent_pathfinding) problem with capacity constraints.
+
 ### Constraints
 
 #### Map
@@ -79,7 +81,7 @@ Install project dependencies:
 
     make install
 
-Execute the project:
+Execute the project with default map:
 
     make run
 
@@ -87,9 +89,13 @@ Select map file path:
 
     uv run python main.py -m map_file_path
 
-Visualize with the graphical interface:
+Visualize with the graphical interface with default map:
 
     make visualize
+
+Select map file + visualization:
+
+    uv run python main.py -m map_file_path -v
 
 Run the script in debug mode using `pdb`:
 
@@ -145,3 +151,6 @@ traverse this connection simultaneously: `max_link_capacity=<number>` (default: 
 
 ## Resources
 - [Youtube Graph Theory Playlist by WilliamFiset](https://www.youtube.com/playlist?list=PLDV1Zeh2NRsDGO4--qE8yH72HFL1Km93P)
+- Silver, D. (2005). Cooperative Pathfinding. *Proceedings of the AAAI Conference on Artificial Intelligence and Interactive Digital Entertainment*, 1(1), 117–122. https://doi.org/10.1609/aiide.v1i1.18726
+
+AI was used to explain pathfinding algorithms with step-by-step examples and compare their pros and cons.

@@ -2,6 +2,7 @@ import pytest
 import sys
 
 from parser import Parser, ParseError
+from map import ZoneType
 from unittest.mock import patch
 
 
@@ -21,6 +22,21 @@ class TestParser:
         "   connection: waypoint2-goal  [   max_link_capacity=2 ]\n"
     )
 
+    GOOD_MAP2: str = (
+        "# Easy Level 1: Simple linear path\n"
+        "nb_drones: 2  # simple comment \n"
+        "\n"
+        "   # More comments\n"
+        "   start_hub: start 0 0 [color=green max_drones=1]   \n"
+        " hub   :    waypoint1 1 0 [color=blue  max_drones=2]\n"
+        "hub: waypoint2 2 0 [  zone=restricted  color=blue   max_drones=2   ]\n"
+        "end_hub  :  goal    3   0   [   color=red zone=restricted] \n"
+        "   \n"
+        "connection  :   start-waypoint1 []\n"
+        "connection: waypoint1-waypoint2 [   ] \n"
+        "   connection: waypoint2-goal  [   max_link_capacity=2 ]\n"
+    )
+
     EMPTY_MAP: str = ""
 
     INVALID_KEYS: str = (
@@ -32,6 +48,36 @@ class TestParser:
         " hub1   :    waypoint1 1 0 [color=blue  max_drones=2]\n"
         "hub2: waypoint2 2 0 [  zone=restricted  color=blue   max_drones=2   ]\n"
         "end_hub  :  goal    3   0   [   color=red] \n"
+        "   \n"
+        "connection  :   start-waypoint1 []\n"
+        "connection: waypoint1-waypoint2 [   ] \n"
+        "   connection: waypoint2-goal  [   max_link_capacity=2 ]\n"
+    )
+
+    BLOCKED_START: str = (
+        "# Easy Level 1: Simple linear path\n"
+        "nb_drones: 2  # simple comment \n"
+        "\n"
+        "   # More comments\n"
+        "   start_hub: start 0 0 [color=green zone=block]   \n"
+        " hub1   :    waypoint1 1 0 [color=blue  max_drones=2]\n"
+        "hub2: waypoint2 2 0 [  zone=restricted  color=blue   max_drones=2   ]\n"
+        "end_hub  :  goal    3   0   [   color=red] \n"
+        "   \n"
+        "connection  :   start-waypoint1 []\n"
+        "connection: waypoint1-waypoint2 [   ] \n"
+        "   connection: waypoint2-goal  [   max_link_capacity=2 ]\n"
+    )
+
+    BLOCKED_END: str = (
+        "# Easy Level 1: Simple linear path\n"
+        "nb_drones: 2  # simple comment \n"
+        "\n"
+        "   # More comments\n"
+        "   start_hub: start 0 0 [color=green]   \n"
+        " hub1   :    waypoint1 1 0 [color=blue  max_drones=2]\n"
+        "hub2: waypoint2 2 0 [  zone=restricted  color=blue   max_drones=2   ]\n"
+        "end_hub  :  goal    3   0   [   color=red zone=block] \n"
         "   \n"
         "connection  :   start-waypoint1 []\n"
         "connection: waypoint1-waypoint2 [   ] \n"
@@ -382,6 +428,21 @@ class TestParser:
         assert len(res.hubs) == 2
         assert len(res.connections) == 3
 
+    def test_good_map2(self, tmp_path, monkeypatch) -> None:
+        map_file = tmp_path / "good_map2.txt"
+        map_file.write_text(self.GOOD_MAP2)
+        monkeypatch.setattr(sys, "argv", ["main.py", "-m", str(map_file)])
+
+        parser = Parser()
+        res = parser.parse_map()
+        assert res.nb_drones == 2
+        assert res.start.name == "start"
+        assert res.start.max_drones == 2
+        assert res.end.name == "goal"
+        assert res.end.zone_type == ZoneType.RESTRICTED
+        assert len(res.hubs) == 2
+        assert len(res.connections) == 3
+
     def test_empty_map(self, tmp_path, monkeypatch) -> None:
         map_file = tmp_path / "empty_map.txt"
         map_file.write_text(self.EMPTY_MAP)
@@ -394,6 +455,24 @@ class TestParser:
     def test_invalid_keys(self, tmp_path, monkeypatch) -> None:
         map_file = tmp_path / "invalid_keys.txt"
         map_file.write_text(self.INVALID_KEYS)
+        monkeypatch.setattr(sys, "argv", ["main.py", "-m", str(map_file)])
+
+        with pytest.raises(ParseError):
+            parser = Parser()
+            parser.parse_map()
+    
+    def test_blocked_start(self, tmp_path, monkeypatch) -> None:
+        map_file = tmp_path / "blocked_start.txt"
+        map_file.write_text(self.BLOCKED_START)
+        monkeypatch.setattr(sys, "argv", ["main.py", "-m", str(map_file)])
+
+        with pytest.raises(ParseError):
+            parser = Parser()
+            parser.parse_map()
+    
+    def test_blocked_end(self, tmp_path, monkeypatch) -> None:
+        map_file = tmp_path / "blocked_end.txt"
+        map_file.write_text(self.BLOCKED_END)
         monkeypatch.setattr(sys, "argv", ["main.py", "-m", str(map_file)])
 
         with pytest.raises(ParseError):

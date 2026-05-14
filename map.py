@@ -31,11 +31,17 @@ class Hub(BaseModel):
     max_drones: int = Field(default=1, gt=0)
     color: str | None = Field(default=None)
 
+    # adjacency list
+    adj: dict[Hub, float] = {}
+
     @model_validator(mode="after")
     def validate(self):
         if "-" in self.name or " " in self.name:
             raise ValueError("Hub name may not contain dashes or spaces!")
         return self
+
+    def __hash__(self):
+        return hash(self.name)
 
 
 class Connection(BaseModel):
