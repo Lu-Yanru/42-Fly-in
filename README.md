@@ -29,6 +29,72 @@ This is essentially a [multi-agent pathfinding (MAPF)](https://en.wikipedia.org/
 - The simulation ends when all drones have reached the end zone.
 
 ### Algorithm
+This project implements the **Cooperative A* (CA*)** algorithm. CA* routes drones one at a time through a space-time graph. After each drone is routed, its path is recorded in a shared reservation table, and the next drone treats those reservations as obstacles.
+
+#### Space-time graph
+A **space-time graph** extends each node with a time dimension, with each node being (zone, turn) pair. This means the same physical zone appears as a different node at each turn, e.g. `(A, 1)`, `(A, 2)`, `(A, 3)`. This allows the algorithm to reason about when a drone is somewhere and not just where it is.
+
+The nodes are generated on the fly as A* expands the frontier and never for all the zones. This keeps the memory usage low.
+
+The edges represents movements of the drones: `(zone, t) -> (neighbor, t + move_cost)`
+
+Move costs are based on zone/movement types:
+|Zone/movement type  | Cost |
+|-----------|------|
+|Normal     |1     |
+|Restricted |2     |
+|Priority   |0.9 (slightly preferred) |
+|Block      |-- (no edge going to this node) |
+|Wait       |1     |
+
+#### Reservation table
+The reservation table is a shared dictionary updated after each drone is routed. It records how many drones occupy each `(zone, turn)` cell and each `(connection, turn)` cell. When routing, any node that would exceed its capacity limit is treated as a wall so that the drone cannot go there.
+
+Three types of reservations are maintained:
+
+- Zone reservation:       `(zone, turn)`
+- Connection reservation: `(zone_a, zone_b, turn)`
+- Transit reservation:    `(from_zone, to_zone, turn)`
+
+Transit reservations handle the restricted zone commit rule: a drone entering transit toward a restricted zone reserves the mid-transit cell, preventing another drone from entering the same connection simultaneously, and the destination cell is checked at planning time to ensure it will be free on arrival.
+
+#### A* search algorithm
+Each drone is routed using the **A*** algorithm to find the shortest path from start to end hub on the space-time graph respecting capacity constraints in the reservation table.
+
+A* is an extension of Dijkstra's algorithm guided by a heuristic (an estimate used to make a decision faster, in the context of pathfinding, an estimate of how far a node is from the goal), which makes it incomplete (may not explore all nodes), but faster because of that.
+
+A* maintains:
+- A priority queue of nodes to explore, ordered by `f = g + h`. The node with the lowest `f` will be explored next.
+    - `g`: The actual cost from `(start, 0)` to the current node.
+    - `h`: The heuristic from the current node to the end node. This is commonly the Eucliean distance between the current node and the end node in pathfinding. But in this case, the acutal distance between zones do not matter, only the zone types and number of turns. Therefore, the estimated cost is the fewest number of turns it takes from the current node to the end node. This is calculated by running a reverse Dijktra from the end zone once at the beginning, ignoring all other drones. This gives us the the minimum number of turns (costs) from every zone to the end zone.
+- A visited/cost record that tracks the best known `g` cost to reach each node, and which node it came from, so the path can be reconstructed at the end.
+
+- Step 1: Initialize by adding the start node to the priority queue and the visited/cost record.
+- Step 2: Calculate `f` for the neighboring nodes and add them to the priority queue, add new zones to the visited/cost record.
+- Step 3: Find neighbors of the node with the highest priority.
+- Step 4: Repeate step 2 and 3 until the end node is reached.
+- Step 5: Trace back the shortest path from the visited/cost record.
+
+#### Optimality and efficiency analysis
+- Time complexity: `O(K × (V·T) × log(V·T))`
+- Space complexity: `O(K × T)`
+
+where:
+- `V` = number of nodes
+- `E` = number of edges
+- `T` = turn horizon (maximum number of search turns before giving up on the search)
+- `K` = number of drones
+
+**Pros:**
+
+- The reservation table naturally handles capacity constraints and avoids conflicts (in comparison to simple shortest path algorithms such as Dijkstra's algorithm or A*).
+- Efficient, less time and space complexity compared to optimal but complex algorithms such as Conflict-Based Search (CBS) or Time-Expanded Graph + shortest path algorithms.
+
+**Cons:**
+
+- Suboptimal because CA* is priority-ordered, i.e. it routes drones sequentially, and the order matters. The first drone gets its globally optimal path. Every subsequent drone gets the best path given the reservations left by earlier drones, but that local optimum may not be globally optimal.
+
+CA* offers a balanced solution between optimality, efficiency and implementation complexity. In practice, due to constraints of this project (all drones are the same, unique start and end hub means drones will always go towards the same direction), CA* finds the optimal solution in most cases and reliably meets the benchmarks. Thus, CA* is suitable for this project.
 
 ### Visualization
 The step-by-step movements of the drones are visualized in the following formats:
@@ -58,6 +124,7 @@ To enhance the user experience, a graphical interface is also implemented which 
 ### Benchmarks
 
 | Difficulty | Map | Target | Status |
+|------------|-----|--------|--------|
 | 🟢 Easy | Linear path with 2 drones | ≤ 6 turns | ✅ |
 | 🟢 Easy | Simple fork with 4 drones | ≤ 8 turns | ✅ |
 | 🟢 Easy | Basic capacity with 4 drones | ≤ 6 turns | ✅ |
