@@ -3,6 +3,7 @@
 
 import sys
 from parser import Parser, ParseError
+from graph import Graph
 
 
 def main() -> None:
@@ -10,6 +11,7 @@ def main() -> None:
 
     try:
         map = parser.parse_map()
+        graph = Graph(map)
     except ParseError as e:
         print(e, file=sys.stderr)
 

@@ -77,7 +77,7 @@ Challenger (optional), ≤ 45 turns
 Part 2: Implementation Plan
 
 
-Phase 1 — Core Data Structures
+x Phase 1 — Core Data Structures
 Goal: Define the foundational classes the entire system depends on. No logic yet — just structure.
 
 Steps:
@@ -96,21 +96,21 @@ x 3. Create Connection class with fields:
     - zone_b: Zone
     - max_link_capacity: int
 
-4. Create Graph class with fields:
+x 4. Create Graph class with fields:
 
     - zones: dict[str, Zone]
     - connections: list[Connection]
     - adjacency: dict[str, list[tuple[Zone, Connection]]]
     - Methods: add_zone(), add_connection(), get_neighbours(zone_name)
 
-5. Create Drone class with fields:
+x 5. Create Drone class with fields:
 
     - drone_id: int
     - current_zone: str
     - path: list[tuple[str, int]] — list of (zone, turn) pairs
     - delivered: bool
 
-Testable: instantiate all classes manually, verify field types pass mypy, verify get_neighbours returns correct adjacency.
+x Testable: instantiate all classes manually, verify field types pass mypy, verify get_neighbours returns correct adjacency.
 
 
 

@@ -1,5 +1,7 @@
 """
 Classes for the map representation:
+Class Drone represents a drone that has an id, the name of the current
+zone it is in, the path it takes and whether it is delevered or not.
 Class Hub contains a name, coordinates, whether it is start or end hub,
 zone type, max_drones and color.
 Class connection contains the 2 hubs it connects and max_link_capacity.
@@ -10,6 +12,13 @@ and a list of connections.
 
 from enum import Enum
 from pydantic import BaseModel, Field, model_validator
+
+
+class Drone(BaseModel):
+    id: int
+    current_zone: str
+    path: list[tuple[str, int]]
+    delivered: bool
 
 
 class ZoneType(Enum):
