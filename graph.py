@@ -9,8 +9,14 @@ It contains:
 """
 
 
+import heapq
+
 from map import Hub, Connection, Map, ZoneType
 
+
+class GraphError(Exception):
+    """Errors related to the graph."""
+    pass
 
 class Graph:
     """
@@ -42,7 +48,7 @@ class Graph:
 
         return res
 
-    def move_cost(self, dest: Hub) -> float:
+    def get_cost(self, dest: Hub) -> float:
         """
         Return the movement cost of entering
         a destiantion zone.
@@ -56,6 +62,40 @@ class Graph:
                 return 2.0
             case ZoneType.BLOCK:
                 return float("inf")
+
+    def reverse_dijkstra(self) -> dict[str, float]:
+        """
+        Calculates the heuristic of each zone
+        (distance in turns to the end zone)
+        using reverse Dijkstra.
+        Return a dictionary with the zone name as key
+        and the heuristic as value.
+        """
+        h: dict[str, float] = {
+            name: float("inf") for name in self.hubs.keys()
+        }
+        h[self.end_name] = 0.0
+        heap: list[tuple[float, str]] = [(0.0, self.end_name)]
+
+        while heap:
+            cost, name = heapq.heappop(heap)
+
+            if cost > h[name]:
+                continue
+
+            entering_cost = self.get_cost(self.get_hub(name))
+            for neighbor, _ in self.get_neighbors(name):
+                new_cost = cost + entering_cost
+                if new_cost < h[neighbor.name]:
+                    h[neighbor.name] = new_cost
+                    heapq.heappush(heap, (new_cost, neighbor.name))
+
+        if h[self.start_name] == float("inf"):
+            raise GraphError("GraphError: Start hub is not "
+                             "connected to the end hub."
+                             "No solution can be found.")
+
+        return h
 
     def _get_all_hubs(self, map: Map) -> dict[str, Hub]:
         """

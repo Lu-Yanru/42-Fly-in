@@ -150,22 +150,22 @@ x 5. Validate exactly one start_hub and one end_hub exist after parsing
 x Testable: parse the provided example map files, parse deliberately broken files (wrong type, duplicate connection, missing start hub) and verify correct error messages with line numbers.
 
 
-Phase 3 — Heuristic Pre-computation
+x Phase 3 — Heuristic Pre-computation
 Goal: Compute h(zone) for every zone once, before any drone routing begins.
 
 Steps:
 
-1. Implement reverse Dijkstra on the Graph class:
+x 1. Implement reverse Dijkstra on the Graph class:
 
     - Start from end_hub
     - Traverse edges in reverse
     - Use a priority queue (implement as a min-heap using Python's heapq)
     - Edge cost = move cost of the destination zone type (normal=1, restricted=2, priority=0.9, blocked=skip)
 
-2. Store results in a heuristic: dict[str, float] mapping zone name to shortest cost to End
+x 2. Store results in a heuristic: dict[str, float] mapping zone name to shortest cost to End
 Any zone unreachable from End gets h = infinity
 
-Testable: run on example maps, manually verify h(start_hub) equals the known shortest path length, verify blocked zones get infinity, verify restricted zones on the shortest path increase h correctly.
+x Testable: run on example maps, manually verify h(start_hub) equals the known shortest path length, verify blocked zones get infinity, verify restricted zones on the shortest path increase h correctly.
 
 
 Phase 4 — Reservation Table
