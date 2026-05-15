@@ -28,27 +28,27 @@ class Hub(BaseModel):
     is_start: bool = Field(default=False)
     is_end: bool = Field(default=False)
     zone_type: ZoneType = Field(default=ZoneType.NORMAL)
-    max_drones: int = Field(default=1, gt=0)
+    max_drones: int = Field(default=1, ge=0)
     color: str | None = Field(default=None)
-
-    # adjacency list
-    adj: dict[Hub, float] = {}
 
     @model_validator(mode="after")
     def validate(self):
         if "-" in self.name or " " in self.name:
             raise ValueError("Hub name may not contain dashes or spaces!")
-        return self
 
-    def __hash__(self):
-        return hash(self.name)
+        if self.zone_type != ZoneType.BLOCK \
+                and self.max_drones == 0:
+            raise ValueError("A non-blocked zone type must have capacity of"
+                             "at least one drone.")
+
+        return self
 
 
 class Connection(BaseModel):
     """Represents a connection."""
     src: Hub
     dest: Hub
-    capacity: int = Field(default=1, gt=0)
+    capacity: int = Field(default=1, ge=0)
 
     @model_validator(mode="after")
     def validate(self):
@@ -57,6 +57,13 @@ class Connection(BaseModel):
                 and self.src.y == self.dest.y):
             raise ValueError("Connection's destination "
                              "and source cannot be the same!")
+
+        if self.src.zone_type != ZoneType.BLOCK \
+            and self.dest.zone_type != ZoneType.BLOCK \
+                and self.capacity == 0:
+            raise ValueError("A connection to a non-blocked zone"
+                             "must have capacity of at least one drone.")
+
         return self
 
 
@@ -76,4 +83,10 @@ class Map(BaseModel):
                 and self.start.y == self.end.y):
             raise ValueError("Start and end hub "
                              "cannot overlap!")
+
+        if self.start.max_drones != self.nb_drones \
+                or self.end.max_drones != self.nb_drones:
+            raise ValueError("Start and end hub must have capacity"
+                             "for all drones!")
+
         return self
