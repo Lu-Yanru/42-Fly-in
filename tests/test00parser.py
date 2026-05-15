@@ -113,6 +113,21 @@ class TestParser:
         "   connection: waypoint2-goal  [   max_link_capacity=2 ]\n"
     )
 
+    NB_DRONE_NOT_FIRST: str = (
+        "# Easy Level 1: Simple linear path\n"
+        "\n"
+        "   # More comments\n"
+        "   start_hub: start 0 0 [color=green]   \n"
+        "nb_drones: 0  # simple comment \n"
+        " hub   :    waypoint1 1 0 [color=blue  max_drones=2]\n"
+        "hub: waypoint2 2 0 [  zone=restricted  color=blue   max_drones=2   ]\n"
+        "end_hub  :  goal    3   0   [   color=red] \n"
+        "   \n"
+        "connection  :   start-waypoint1 []\n"
+        "connection: waypoint1-waypoint2 [   ] \n"
+        "   connection: waypoint2-goal  [   max_link_capacity=2 ]\n"
+    )
+
     NO_START: str = (
         "# Easy Level 1: Simple linear path\n"
         "nb_drones: 2  # simple comment \n"
@@ -491,6 +506,15 @@ class TestParser:
     def test_invalid_nb_drones(self, tmp_path, monkeypatch) -> None:
         map_file = tmp_path / "invalid_nb_drones.txt"
         map_file.write_text(self.INVALID_NB_DRONE)
+        monkeypatch.setattr(sys, "argv", ["main.py", "-m", str(map_file)])
+
+        with pytest.raises(ParseError):
+            parser = Parser()
+            parser.parse_map()
+
+    def test_nb_drones_not_first(self, tmp_path, monkeypatch) -> None:
+        map_file = tmp_path / "nb_drones_not_first.txt"
+        map_file.write_text(self.NB_DRONE_NOT_FIRST)
         monkeypatch.setattr(sys, "argv", ["main.py", "-m", str(map_file)])
 
         with pytest.raises(ParseError):

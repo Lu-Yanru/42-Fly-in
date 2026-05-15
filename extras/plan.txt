@@ -2,195 +2,205 @@ Part 1: Project Summary
 Overview
 The project is a multi-drone routing simulation system. A fleet of K drones must be routed from a unique start hub to a unique end hub across a weighted graph of zones, in the minimum number of simulation turns (makespan). The system must parse an input map file, compute optimal or near-optimal routes using CA*, simulate the movement turn by turn, and display the result visually.
 
+
 Input Format
 The system reads a map file with the following structure:
-nb_drones: <positive_integer>
-start_hub: <name> <x> <y> [metadata]
-end_hub:   <name> <x> <y> [metadata]
-hub:       <name> <x> <y> [metadata]
-connection: <zone1>-<zone2> [metadata]
-# comments are ignored
+
+    nb_drones: <positive_integer>
+    start_hub: <name> <x> <y> [metadata]
+    end_hub:   <name> <x> <y> [metadata]
+    hub:       <name> <x> <y> [metadata]
+    connection: <zone1>-<zone2> [metadata]
+    # comments are ignored
+
 Zone metadata fields (all optional):
-zone=<type>         default: normal
-color=<value>       default: none
-max_drones=<int>    default: 1
+
+    zone=<type>         default: normal
+    color=<value>       default: none
+    max_drones=<int>    default: 1
+
 Connection metadata fields (all optional):
-max_link_capacity=<int>    default: 1
+
+    max_link_capacity=<int>    default: 1
 
 Zone Types
-TypeMovement CostRulenormal1 turnStandard movementrestricted2 turnsDrone must commit — cannot wait mid-transitpriority1 turnSame cost as normal but preferred by pathfindingblocked—Inaccessible — no drone may enter
+Type, Movement Cost, Rule
+normal, 1 turn, Standard movement
+restricted, 2 turns, Drone must commit — cannot wait mid-transit
+priority, 1 turn, Same cost as normal but preferred by pathfinding
+blocked, —, Inaccessible — no drone may enter
+
 
 Hard Constraints
-Parser:
 
-First line must define nb_drones
-Exactly one start_hub and one end_hub
-Every zone name must be unique, no dashes or spaces in names
-No duplicate connections (a-b and b-a are the same)
-Zone types must be one of the four valid types
-Capacity values must be positive integers
-Any violation stops the program with a clear error message including line number and cause
+Parser:
+- First line must define nb_drones
+- Exactly one start_hub and one end_hub
+- Every zone name must be unique, no dashes or spaces in names
+- No duplicate connections (a-b and b-a are the same)
+- Zone types must be one of the four valid types
+- Capacity values must be positive integers
+- Any violation stops the program with a clear error message including line number and cause
 
 Movement and occupancy:
-
-A zone may hold at most max_drones drones simultaneously (default 1)
-Start hub: unlimited capacity at turn 0
-End hub: unlimited capacity always
-A connection may be traversed by at most max_link_capacity drones per turn (default 1)
-Drones moving out of a zone free capacity for that same turn
-A drone entering a restricted zone must arrive on the next turn — it cannot wait on the connection
-Blocked zones cannot be entered under any circumstances
+- A zone may hold at most max_drones drones simultaneously (default 1)
+- Start hub: unlimited capacity at turn 0
+- End hub: unlimited capacity always
+- A connection may be traversed by at most max_link_capacity drones per turn (default 1)
+- Drones moving out of a zone free capacity for that same turn
+- A drone entering a restricted zone must arrive on the next turn — it cannot wait on the connection
+- Blocked zones cannot be entered under any circumstances
 
 Simulation output:
-
-One line per turn listing all drone movements: D<ID>-<zone> or D<ID>-<connection> for restricted transit
-Drones that do not move are omitted
-Drones that reach End are no longer tracked
-Simulation ends when all drones reach End
+- One line per turn listing all drone movements: D<ID>-<zone> or D<ID>-<connection> for restricted transit
+- Drones that do not move are omitted
+- Drones that reach End are no longer tracked
+- Simulation ends when all drones reach End
 
 Technical:
-
-No graph libraries (networkx, graphlib, etc.)
-Fully type-safe — mypy and flake8 must pass
-Fully object-oriented
-Visual feedback required (colored terminal output or graphical display)
+- No graph libraries (networkx, graphlib, etc.)
+- Fully type-safe — mypy and flake8 must pass
+- Fully object-oriented
+- Visual feedback required (colored terminal output or graphical display)
 
 
 Performance Benchmarks
-DifficultyTargetEasy maps≤ 10 turnsMedium maps10–30 turnsHard maps< 60 turnsChallenger (optional)≤ 45 turns
+
+Difficulty, Target
+Easy maps, ≤ 10 turns
+Medium maps, 10–30 turns
+Hard maps, < 60 turns
+Challenger (optional), ≤ 45 turns
+
+
 
 Part 2: Implementation Plan
 
+
 Phase 1 — Core Data Structures
 Goal: Define the foundational classes the entire system depends on. No logic yet — just structure.
+
 Steps:
+x 1. Create ZoneType enum with values NORMAL, RESTRICTED, PRIORITY, BLOCKED
+x 2. Create Zone class with fields:
 
-Create ZoneType enum with values NORMAL, RESTRICTED, PRIORITY, BLOCKED
-Create Zone class with fields:
+    - name: str
+    - x: int, y: int
+    - zone_type: ZoneType
+    - color: str
+    - max_drones: int
 
-name: str
-x: int, y: int
-zone_type: ZoneType
-color: str
-max_drones: int
+x 3. Create Connection class with fields:
 
+    - zone_a: Zone
+    - zone_b: Zone
+    - max_link_capacity: int
 
-Create Connection class with fields:
+4. Create Graph class with fields:
 
-zone_a: Zone
-zone_b: Zone
-max_link_capacity: int
+    - zones: dict[str, Zone]
+    - connections: list[Connection]
+    - adjacency: dict[str, list[tuple[Zone, Connection]]]
+    - Methods: add_zone(), add_connection(), get_neighbours(zone_name)
 
+5. Create Drone class with fields:
 
-Create Graph class with fields:
-
-zones: dict[str, Zone]
-connections: list[Connection]
-adjacency: dict[str, list[tuple[Zone, Connection]]]
-Methods: add_zone(), add_connection(), get_neighbours(zone_name)
-
-
-Create Drone class with fields:
-
-drone_id: int
-current_zone: str
-path: list[tuple[str, int]] — list of (zone, turn) pairs
-delivered: bool
-
-
+    - drone_id: int
+    - current_zone: str
+    - path: list[tuple[str, int]] — list of (zone, turn) pairs
+    - delivered: bool
 
 Testable: instantiate all classes manually, verify field types pass mypy, verify get_neighbours returns correct adjacency.
 
-Phase 2 — Parser
-Goal: Read a map file and produce a fully validated Graph object.
-Steps:
 
-Create Parser class with method parse(filepath: str) -> ParseResult where ParseResult holds the graph and drone count
+
+x Phase 2 — Parser
+Goal: Read a map file and produce a fully validated Graph object.
+
+Steps:
+x 1. Create Parser class with method parse(filepath: str) -> ParseResult where ParseResult holds the graph and drone count
 Implement line-by-line reading:
 
-Skip empty lines and comments (#)
-Track line number for error reporting
+    - Skip empty lines and comments (#)
+    - Track line number for error reporting
+x 2. Implement nb_drones parsing:
+    - Must be first non-comment line
+    - Must be a positive integer
+    - Raise ParseError with line number if missing or invalid
 
+x 3. Implement zone parsing for start_hub, end_hub, hub:
 
-Implement nb_drones parsing:
+    - Extract name, x, y
+    - Parse optional metadata block [...]
+    - Validate zone type against enum
+    - Validate max_drones is a positive integer
+    - Enforce unique names
+    - Raise ParseError on any violation
 
-Must be first non-comment line
-Must be a positive integer
-Raise ParseError with line number if missing or invalid
+x 4. Implement connection parsing:
 
+    - Split on - to get zone names
+    - Validate both zones were previously defined
+    - Validate no duplicate connections
+    - Parse optional max_link_capacity
+    - Raise ParseError on any violation
 
-Implement zone parsing for start_hub, end_hub, hub:
+x 5. Validate exactly one start_hub and one end_hub exist after parsing
 
-Extract name, x, y
-Parse optional metadata block [...]
-Validate zone type against enum
-Validate max_drones is a positive integer
-Enforce unique names
-Raise ParseError on any violation
+x Testable: parse the provided example map files, parse deliberately broken files (wrong type, duplicate connection, missing start hub) and verify correct error messages with line numbers.
 
-
-Implement connection parsing:
-
-Split on - to get zone names
-Validate both zones were previously defined
-Validate no duplicate connections
-Parse optional max_link_capacity
-Raise ParseError on any violation
-
-
-Validate exactly one start_hub and one end_hub exist after parsing
-
-Testable: parse the provided example map files, parse deliberately broken files (wrong type, duplicate connection, missing start hub) and verify correct error messages with line numbers.
 
 Phase 3 — Heuristic Pre-computation
 Goal: Compute h(zone) for every zone once, before any drone routing begins.
+
 Steps:
 
-Implement reverse Dijkstra on the Graph class:
+1. Implement reverse Dijkstra on the Graph class:
 
-Start from end_hub
-Traverse edges in reverse
-Use a priority queue (implement as a min-heap using Python's heapq)
-Edge cost = move cost of the destination zone type (normal=1, restricted=2, priority=0.9, blocked=skip)
+    - Start from end_hub
+    - Traverse edges in reverse
+    - Use a priority queue (implement as a min-heap using Python's heapq)
+    - Edge cost = move cost of the destination zone type (normal=1, restricted=2, priority=0.9, blocked=skip)
 
-
-Store results in a heuristic: dict[str, float] mapping zone name to shortest cost to End
+2. Store results in a heuristic: dict[str, float] mapping zone name to shortest cost to End
 Any zone unreachable from End gets h = infinity
 
 Testable: run on example maps, manually verify h(start_hub) equals the known shortest path length, verify blocked zones get infinity, verify restricted zones on the shortest path increase h correctly.
 
+
 Phase 4 — Reservation Table
 Goal: Implement the shared data structure that CA* uses to prevent conflicts.
+
 Steps:
 
-Create ReservationTable class with:
+1. Create ReservationTable class with:
 
-zone_reservations: dict[tuple[str, int], int] — maps (zone_name, turn) to drone count
-connection_reservations: dict[tuple[str, str, int], int] — maps (zone_a, zone_b, turn) to drone count
-transit_reservations: dict[tuple[str, str, int], int] — maps (from_zone, to_zone, turn) to drone count for restricted zone mid-transit
+    - zone_reservations: dict[tuple[str, int], int] — maps (zone_name, turn) to drone count
+    - connection_reservations: dict[tuple[str, str, int], int] — maps (zone_a, zone_b, turn) to drone count
+    - transit_reservations: dict[tuple[str, str, int], int] — maps (from_zone, to_zone, turn) to drone count for restricted zone mid-transit
 
-
-Implement is_zone_available(zone: str, turn: int, max_drones: int) -> bool
-Implement is_connection_available(zone_a: str, zone_b: str, turn: int, max_link_capacity: int) -> bool
-Implement reserve_zone(zone: str, turn: int) and reserve_connection(zone_a: str, zone_b: str, turn: int)
-Implement reserve_path(path: list[tuple[str, int]]) — registers all cells of a complete drone path at once
+2. Implement is_zone_available(zone: str, turn: int, max_drones: int) -> bool
+3. Implement is_connection_available(zone_a: str, zone_b: str, turn: int, max_link_capacity: int) -> bool
+4. Implement reserve_zone(zone: str, turn: int) and reserve_connection(zone_a: str, zone_b: str, turn: int)
+5. Implement reserve_path(path: list[tuple[str, int]]) — registers all cells of a complete drone path at once
 
 Testable: manually reserve cells, verify availability checks return correct values, verify capacity limits are enforced, verify a path reservation blocks the correct cells.
 
+
 Phase 5 — Space-Time A*
 Goal: Implement the core pathfinding algorithm for a single drone on the space-time graph.
+
 Steps:
 
-Create SpaceTimeNode dataclass with:
+1. Create SpaceTimeNode dataclass with:
 
-zone: str
-turn: int
-g: float — actual cost so far
-f: float — g + h
-came_from: Optional[SpaceTimeNode]
+    - zone: str
+    - turn: int
+    - g: float — actual cost so far
+    - f: float — g + h
+    - came_from: Optional[SpaceTimeNode]
 
-
-Implement AStarRouter class with method:
+2. Implement AStarRouter class with method:
 
    find_path(
        start: str,
@@ -202,32 +212,30 @@ Implement AStarRouter class with method:
        turn_horizon: int
    ) -> list[tuple[str, int]] | None
 
-Implement the A* loop:
+3. Implement the A* loop:
 
-Priority queue ordered by f
-At each expansion, generate neighbours:
+    - Priority queue ordered by f
+    - At each expansion, generate neighbours:
+            - Wait: (zone, t+1), cost +1
+            - Normal move: (neighbour, t+1), cost +1
+            - Priority move: (neighbour, t+1), cost +0.9
+            - Restricted move: check both transit (zone→neighbour, t+1) and destination (neighbour, t+2) are available — if yes, add (neighbour, t+2), cost +2; also reserve transit node immediately
+            - Blocked: skip entirely
+    - For each neighbour, check reservation table before adding to frontier
+    - Stop when End node is popped from the queue
 
-Wait: (zone, t+1), cost +1
-Normal move: (neighbour, t+1), cost +1
-Priority move: (neighbour, t+1), cost +0.9
-Restricted move: check both transit (zone→neighbour, t+1) and destination (neighbour, t+2) are available — if yes, add (neighbour, t+2), cost +2; also reserve transit node immediately
-Blocked: skip entirely
-
-
-For each neighbour, check reservation table before adding to frontier
-Stop when End node is popped from the queue
-
-
-Implement path reconstruction by tracing came_from links back to start
-Return list of (zone, turn) pairs representing the full path
+4. Implement path reconstruction by tracing came_from links back to start
+5. Return list of (zone, turn) pairs representing the full path
 
 Testable: run on simple graphs with no reservations, verify optimal path matches known shortest path; run with pre-filled reservations, verify drone correctly avoids reserved cells and finds next best path; test restricted zone commit rule specifically.
 
+
 Phase 6 — CA* Coordinator
 Goal: Route all K drones using CA* — running A* once per drone, updating the reservation table after each.
+
 Steps:
 
-Create CooperativeAStarCoordinator class with method:
+1. Create CooperativeAStarCoordinator class with method:
 
    route_all_drones(
        drones: list[Drone],
@@ -236,106 +244,89 @@ Create CooperativeAStarCoordinator class with method:
        turn_horizon: int
    ) -> list[list[tuple[str, int]]]
 
-Implement drone ordering — sort drones by h(start) ascending (shortest estimated path first) as the default ordering
-For each drone in order:
+2. Implement drone ordering — sort drones by h(start) ascending (shortest estimated path first) as the default ordering
+3. For each drone in order:
+    - Call AStarRouter.find_path() with current reservation table
+    - If no path found, raise an error or retry with increased turn horizon
+    - Register the found path in the reservation table
+    - Store path in drone's path field
 
-Call AStarRouter.find_path() with current reservation table
-If no path found, raise an error or retry with increased turn horizon
-Register the found path in the reservation table
-Store path in drone's path field
+4. Implement ordering retry strategy:
+    - After routing all drones with shortest-first ordering, try longest-first
+    - Keep whichever ordering produces the smaller makespan
+    - Makespan = max turn across all drone paths
 
-
-Implement ordering retry strategy:
-
-After routing all drones with shortest-first ordering, try longest-first
-Keep whichever ordering produces the smaller makespan
-Makespan = max turn across all drone paths
-
-
-Compute and return final makespan
+5. Compute and return final makespan
 
 Testable: run on all provided easy maps, verify makespan meets benchmarks; verify two orderings are tried and best is kept; verify no two drones occupy the same zone at the same turn in the output.
 
+
 Phase 7 — Simulator
 Goal: Execute the routes turn by turn and produce the required output format.
+
 Steps:
 
-Create Simulator class with method run(drone_paths: list[list[tuple[str, int]]]) -> list[str]
-For each turn from 1 to makespan:
+1. Create Simulator class with method run(drone_paths: list[list[tuple[str, int]]]) -> list[str]
 
-Determine which drones move this turn by comparing their path to current turn
-For restricted zone transit turns, output D<ID>-<connection> format
-For all other moves, output D<ID>-<zone> format
-Omit drones that do not move
-Mark drones as delivered when they reach End
-Stop tracking delivered drones
+2. For each turn from 1 to makespan:
+    - Determine which drones move this turn by comparing their path to current turn
+    - For restricted zone transit turns, output D<ID>-<connection> format
+    - For all other moves, output D<ID>-<zone> format
+    - Omit drones that do not move
+    - Mark drones as delivered when they reach End
+    - Stop tracking delivered drones
 
-
-Collect all turn strings into a list and return
-Print final output — one line per turn
+3. Collect all turn strings into a list and return
+4. Print final output — one line per turn
 
 Testable: run on manually constructed drone paths, verify output format exactly matches specification; verify delivered drones are not tracked after arrival; verify restricted zone transit is formatted correctly.
 
+
 Phase 8 — Visualiser
 Goal: Provide visual feedback of the simulation.
+
 Steps:
 
-Implement colored terminal output using ANSI escape codes (no external libraries):
+1. Implement colored terminal output using ANSI escape codes (no external libraries):
+    - Map zone colors from the input file to ANSI color codes
+    - At each turn, print the graph state showing drone positions
+    - Highlight zones containing drones
+    - Show drone IDs at their current positions
 
-Map zone colors from the input file to ANSI color codes
-At each turn, print the graph state showing drone positions
-Highlight zones containing drones
-Show drone IDs at their current positions
-
-
-For each turn:
-
-Clear or redraw the terminal display
-Print zone names with their colors
-Print connections between zones
-Print current drone positions
-Print turn number and movement log
-
-
-Optionally implement a simple graphical display using tkinter (standard library, no external dependencies):
-
-Draw zones as circles at their (x, y) coordinates
-Draw connections as lines
-Animate drone movement between turns
-Color zones according to their type and metadata color
-
-
+2. For each turn:
+    - Print zone names with their colors
+    - Print connections between zones
+    - Print current drone positions
+    - Print turn number and movement log
 
 Testable: run simulation on example maps and visually verify drone positions are correct each turn; verify zone colors match input file; verify delivered drones disappear from display.
 
+
 Phase 9 — Integration and Benchmarking
 Goal: Connect all components, run end-to-end on all provided maps, verify benchmarks.
+
 Steps:
 
-Implement main.py entry point:
+1. Implement main.py entry point:
+    - Accept map file path as command-line argument
+    - Run parser → heuristic → coordinator → simulator → visualiser in sequence
 
-Accept map file path as command-line argument
-Run parser → heuristic → coordinator → simulator → visualiser in sequence
+2. Run on all provided easy, medium, and hard maps
+3. For any map that misses its benchmark:
+    - Profile which phase takes longest
+    - Try additional drone orderings in the coordinator
+    - Increase turn horizon if paths are not found
 
+4. Add secondary metrics output (optional):
+    - Average turns per drone
+    - Total path cost
+    - Drones moved per turn
 
-Run on all provided easy, medium, and hard maps
-For any map that misses its benchmark:
-
-Profile which phase takes longest
-Try additional drone orderings in the coordinator
-Increase turn horizon if paths are not found
-
-
-Add secondary metrics output (optional):
-
-Average turns per drone
-Total path cost
-Drones moved per turn
-
-
-Run mypy and flake8 across all files, fix all type errors and style violations
+5. Run mypy and flake8 across all files, fix all type errors and style violations
 
 Testable: full end-to-end run on every provided map file produces correct output format, meets performance benchmarks, and passes mypy and flake8 with zero errors.
+
+
 
 Part 3: CA* Algorithm Description
 
