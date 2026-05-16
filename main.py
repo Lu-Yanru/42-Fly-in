@@ -3,7 +3,7 @@
 
 import sys
 from parser import Parser, ParseError
-from graph import Graph
+from graph import Graph, GraphError
 
 
 def main() -> None:
@@ -12,7 +12,11 @@ def main() -> None:
     try:
         map = parser.parse_map()
         graph = Graph(map)
+        heuristic = graph.reverse_dijkstra()
+        print(heuristic)
     except ParseError as e:
+        print(e, file=sys.stderr)
+    except GraphError as e:
         print(e, file=sys.stderr)
 
 

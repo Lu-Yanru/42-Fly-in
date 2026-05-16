@@ -184,15 +184,15 @@ x 3. Implement is_connection_available(zone_a: str, zone_b: str, turn: int, max_
 x 4. Implement reserve_zone(zone: str, turn: int) and reserve_connection(zone_a: str, zone_b: str, turn: int)
 x 5. Implement reserve_path(path: list[tuple[str, int]]) — registers all cells of a complete drone path at once
 
-Testable: manually reserve cells, verify availability checks return correct values, verify capacity limits are enforced, verify a path reservation blocks the correct cells.
+x Testable: manually reserve cells, verify availability checks return correct values, verify capacity limits are enforced, verify a path reservation blocks the correct cells.
 
 
-Phase 5 — Space-Time A*
+x Phase 5 — Space-Time A*
 Goal: Implement the core pathfinding algorithm for a single drone on the space-time graph.
 
 Steps:
 
-1. Create SpaceTimeNode dataclass with:
+x 1. Create SpaceTimeNode dataclass with:
 
     - zone: str
     - turn: int
@@ -200,7 +200,7 @@ Steps:
     - f: float — g + h
     - came_from: Optional[SpaceTimeNode]
 
-2. Implement AStarRouter class with method:
+x 2. Implement AStarRouter class with method:
 
    find_path(
        start: str,
@@ -212,7 +212,7 @@ Steps:
        turn_horizon: int
    ) -> list[tuple[str, int]] | None
 
-3. Implement the A* loop:
+x 3. Implement the A* loop:
 
     - Priority queue ordered by f
     - At each expansion, generate neighbours:
@@ -224,10 +224,10 @@ Steps:
     - For each neighbour, check reservation table before adding to frontier
     - Stop when End node is popped from the queue
 
-4. Implement path reconstruction by tracing came_from links back to start
-5. Return list of (zone, turn) pairs representing the full path
+x 4. Implement path reconstruction by tracing came_from links back to start
+x 5. Return list of (zone, turn) pairs representing the full path
 
-Testable: run on simple graphs with no reservations, verify optimal path matches known shortest path; run with pre-filled reservations, verify drone correctly avoids reserved cells and finds next best path; test restricted zone commit rule specifically.
+x Testable: run on simple graphs with no reservations, verify optimal path matches known shortest path; run with pre-filled reservations, verify drone correctly avoids reserved cells and finds next best path; test restricted zone commit rule specifically.
 
 
 Phase 6 — CA* Coordinator

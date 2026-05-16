@@ -93,7 +93,7 @@ class Graph:
 
         if h[self.start_name] == float("inf"):
             raise GraphError("GraphError: Start hub is not "
-                             "connected to the end hub."
+                             "connected to the end hub. "
                              "No solution can be found.")
 
         return h
