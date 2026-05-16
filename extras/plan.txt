@@ -168,21 +168,21 @@ Any zone unreachable from End gets h = infinity
 x Testable: run on example maps, manually verify h(start_hub) equals the known shortest path length, verify blocked zones get infinity, verify restricted zones on the shortest path increase h correctly.
 
 
-Phase 4 — Reservation Table
+x Phase 4 — Reservation Table
 Goal: Implement the shared data structure that CA* uses to prevent conflicts.
 
 Steps:
 
-1. Create ReservationTable class with:
+x 1. Create ReservationTable class with:
 
     - zone_reservations: dict[tuple[str, int], int] — maps (zone_name, turn) to drone count
     - connection_reservations: dict[tuple[str, str, int], int] — maps (zone_a, zone_b, turn) to drone count
     - transit_reservations: dict[tuple[str, str, int], int] — maps (from_zone, to_zone, turn) to drone count for restricted zone mid-transit
 
-2. Implement is_zone_available(zone: str, turn: int, max_drones: int) -> bool
-3. Implement is_connection_available(zone_a: str, zone_b: str, turn: int, max_link_capacity: int) -> bool
-4. Implement reserve_zone(zone: str, turn: int) and reserve_connection(zone_a: str, zone_b: str, turn: int)
-5. Implement reserve_path(path: list[tuple[str, int]]) — registers all cells of a complete drone path at once
+x 2. Implement is_zone_available(zone: str, turn: int, max_drones: int) -> bool
+x 3. Implement is_connection_available(zone_a: str, zone_b: str, turn: int, max_link_capacity: int) -> bool
+x 4. Implement reserve_zone(zone: str, turn: int) and reserve_connection(zone_a: str, zone_b: str, turn: int)
+x 5. Implement reserve_path(path: list[tuple[str, int]]) — registers all cells of a complete drone path at once
 
 Testable: manually reserve cells, verify availability checks return correct values, verify capacity limits are enforced, verify a path reservation blocks the correct cells.
 

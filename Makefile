@@ -1,4 +1,4 @@
-SRC := main.py parser.py map.py
+SRC := main.py parser.py map.py graph.py reservation_table.py
 
 all: install run
 

@@ -18,6 +18,7 @@ class GraphError(Exception):
     """Errors related to the graph."""
     pass
 
+
 class Graph:
     """
     Creates a static graph representation from the map.
@@ -32,9 +33,9 @@ class Graph:
     def get_hub(self, name: str) -> Hub:
         """Get a hub by name."""
         return self.hubs[name]
-    
+
     def get_neighbors(self, name: str) \
-        -> list[tuple[Hub, Connection]]:
+            -> list[tuple[Hub, Connection]]:
         """
         Get the neighbors of a hub
         by name of this hub.
@@ -113,7 +114,7 @@ class Graph:
         return res
 
     def _create_adjacency(self) \
-        -> dict[str, list[tuple[Hub, Connection]]]:
+            -> dict[str, list[tuple[Hub, Connection]]]:
         """
         Create an adjacency dictionary with hub name as key
         and a list of tuples of [neighbour_hub, connection]
