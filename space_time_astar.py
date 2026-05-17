@@ -239,7 +239,7 @@ class AStarRouter:
         """
         path: list[tuple[str, int]] = []
 
-        current = node
+        current: SpaceTimeNode | None = node
         while current is not None:
             path.append((current.hub, current.turn))
             current = current.came_from

@@ -252,7 +252,13 @@ class Parser:
                                      "defined multiple times.")
                 keys.append(key)
                 if key.strip() == "zone":
-                    zone_type = value
+                    try:
+                        zone_type = ZoneType(value)
+                    except ValueError:
+                        raise ParseError(
+                            f"ParseError: Invalid zone type '{value}' "
+                            f"for hub '{hub_name}'."
+                        )
                 elif key.strip() == "color":
                     color = value
                 elif key.strip() == "max_drones":

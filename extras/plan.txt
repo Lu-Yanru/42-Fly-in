@@ -235,7 +235,7 @@ Goal: Route all K drones using CA* — running A* once per drone, updating the r
 
 Steps:
 
-1. Create CooperativeAStarCoordinator class with method:
+x 1. Create CooperativeAStarCoordinator class with method:
 
    route_all_drones(
        drones: list[Drone],
@@ -245,7 +245,7 @@ Steps:
    ) -> list[list[tuple[str, int]]]
 
 2. Implement drone ordering — sort drones by h(start) ascending (shortest estimated path first) as the default ordering
-3. For each drone in order:
+x 3. For each drone in order:
     - Call AStarRouter.find_path() with current reservation table
     - If no path found, raise an error or retry with increased turn horizon
     - Register the found path in the reservation table
@@ -256,9 +256,9 @@ Steps:
     - Keep whichever ordering produces the smaller makespan
     - Makespan = max turn across all drone paths
 
-5. Compute and return final makespan
+x 5. Compute and return final makespan
 
-Testable: run on all provided easy maps, verify makespan meets benchmarks; verify two orderings are tried and best is kept; verify no two drones occupy the same zone at the same turn in the output.
+x Testable: run on all provided easy maps, verify makespan meets benchmarks; verify two orderings are tried and best is kept; verify no two drones occupy the same zone at the same turn in the output.
 
 
 Phase 7 — Simulator

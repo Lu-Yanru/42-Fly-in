@@ -41,7 +41,7 @@ class Hub(BaseModel):
     color: str | None = Field(default=None)
 
     @model_validator(mode="after")
-    def validate(self):
+    def post_validate(self) -> "Hub":
         if "-" in self.name or " " in self.name:
             raise ValueError("Hub name may not contain dashes or spaces!")
 
@@ -60,7 +60,7 @@ class Connection(BaseModel):
     capacity: int = Field(default=1, ge=0)
 
     @model_validator(mode="after")
-    def validate(self):
+    def post_validate(self) -> "Connection":
         if self.src == self.dest \
             or (self.src.x == self.dest.x
                 and self.src.y == self.dest.y):
@@ -85,7 +85,7 @@ class Map(BaseModel):
     connections: list[Connection]
 
     @model_validator(mode="after")
-    def validate(self):
+    def post_validate(self) -> "Map":
         if self.start == self.end \
             or self.start.name == self.end.name \
             or (self.start.x == self.end.x
@@ -93,9 +93,9 @@ class Map(BaseModel):
             raise ValueError("Start and end hub "
                              "cannot overlap!")
 
-        if self.start.max_drones != self.nb_drones \
-                or self.end.max_drones != self.nb_drones:
-            raise ValueError("Start and end hub must have capacity"
+        if self.start.max_drones < self.nb_drones \
+                or self.end.max_drones < self.nb_drones:
+            raise ValueError("Start and end hub must have capacity "
                              "for all drones!")
 
         return self
