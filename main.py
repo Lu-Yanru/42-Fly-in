@@ -2,9 +2,11 @@
 
 
 import sys
+
+from castar_coordinator import RoutingError
+from graph import GraphError
 from parser import Parser, ParseError
-from graph import Graph, GraphError
-from castar_coordinator import CAStarCoordinator, RoutingError
+from simulator import Simulator
 
 
 def main() -> None:
@@ -12,18 +14,20 @@ def main() -> None:
 
     try:
         map = parser.parse_map()
-        graph = Graph(map)
-        castar = CAStarCoordinator()
-        castar.route_all_drones(map.nb_drones, graph)
-        print("Total turns: ", castar.get_makespan())
+        simulator = Simulator(map)
+        simulator.print_log()
+        simulator.compute_metrics()
+        # if parser.args.visualize:
+        #     visualizer = Visualizer(simulator)
+        #     visualizer.visualize()
     except ParseError as e:
         print(e, file=sys.stderr)
     except GraphError as e:
         print(e, file=sys.stderr)
     except RoutingError as e:
         print(e, file=sys.stderr)
-    except Exception as e:
-        print("An unexpected error occured: ", e, file=sys.stderr)
+    # except Exception as e:
+    #     print("An unexpected error occured: ", e, file=sys.stderr)
 
 
 if __name__ == "__main__":

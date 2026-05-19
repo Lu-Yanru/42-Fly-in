@@ -1,5 +1,5 @@
 SRC := main.py parser.py map.py graph.py reservation_table.py \
-		space_time_astar.py castar_coordinator.py
+		space_time_astar.py castar_coordinator.py simulator.py
 
 all: install run
 

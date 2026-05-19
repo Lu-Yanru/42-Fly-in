@@ -4,7 +4,7 @@ with multiple drones.
 """
 
 
-from graph import Graph
+from graph import Graph, GraphError
 from reservation_table import ReservationTable
 from space_time_astar import AStarRouter
 
@@ -30,7 +30,12 @@ class CAStarCoordinator:
         router = AStarRouter()
         reservations = ReservationTable(start_name=graph.start_name,
                                         end_name=graph.end_name)
-        heuristic = graph.reverse_dijkstra()
+
+        try:
+            heuristic = graph.reverse_dijkstra()
+        except GraphError as e:
+            raise GraphError(e)
+
         turn_horizon = len(graph.hubs) * 2 * nb_drones
 
         for id in range(1, nb_drones + 1):

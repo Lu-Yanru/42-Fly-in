@@ -266,9 +266,9 @@ Goal: Execute the routes turn by turn and produce the required output format.
 
 Steps:
 
-1. Create Simulator class with method run(drone_paths: list[list[tuple[str, int]]]) -> list[str]
+x 1. Create Simulator class with method run(drone_paths: list[list[tuple[str, int]]]) -> list[str]
 
-2. For each turn from 1 to makespan:
+x 2. For each turn from 1 to makespan:
     - Determine which drones move this turn by comparing their path to current turn
     - For restricted zone transit turns, output D<ID>-<connection> format
     - For all other moves, output D<ID>-<zone> format
@@ -276,8 +276,8 @@ Steps:
     - Mark drones as delivered when they reach End
     - Stop tracking delivered drones
 
-3. Collect all turn strings into a list and return
-4. Print final output — one line per turn
+x 3. Collect all turn strings into a list and return
+x 4. Print final output — one line per turn
 
 Testable: run on manually constructed drone paths, verify output format exactly matches specification; verify delivered drones are not tracked after arrival; verify restricted zone transit is formatted correctly.
 
@@ -287,13 +287,13 @@ Goal: Provide visual feedback of the simulation.
 
 Steps:
 
-1. Implement colored terminal output using ANSI escape codes (no external libraries):
+x 1. Implement colored terminal output using ANSI escape codes (no external libraries):
     - Map zone colors from the input file to ANSI color codes
     - At each turn, print the graph state showing drone positions
     - Highlight zones containing drones
     - Show drone IDs at their current positions
 
-2. For each turn:
+x 2. For each turn:
     - Print zone names with their colors
     - Print connections between zones
     - Print current drone positions
@@ -307,22 +307,22 @@ Goal: Connect all components, run end-to-end on all provided maps, verify benchm
 
 Steps:
 
-1. Implement main.py entry point:
+x 1. Implement main.py entry point:
     - Accept map file path as command-line argument
     - Run parser → heuristic → coordinator → simulator → visualiser in sequence
 
-2. Run on all provided easy, medium, and hard maps
-3. For any map that misses its benchmark:
+x 2. Run on all provided easy, medium, and hard maps
+x 3. For any map that misses its benchmark:
     - Profile which phase takes longest
     - Try additional drone orderings in the coordinator
     - Increase turn horizon if paths are not found
 
-4. Add secondary metrics output (optional):
+x 4. Add secondary metrics output (optional):
     - Average turns per drone
     - Total path cost
     - Drones moved per turn
 
-5. Run mypy and flake8 across all files, fix all type errors and style violations
+x 5. Run mypy and flake8 across all files, fix all type errors and style violations
 
 Testable: full end-to-end run on every provided map file produces correct output format, meets performance benchmarks, and passes mypy and flake8 with zero errors.
 

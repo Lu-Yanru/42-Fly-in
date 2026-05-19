@@ -222,6 +222,25 @@ def test_two_drones_stagger_through_restricted_zone() -> None:
         "Two drones entered restricted zone transit at the same turn"
     )
 
+def test_two_drones_can_enter_restricted_zone_when_enough_capacity() -> None:
+    """Two drones can be mid-transit into the same restricted zone
+    at the same turn if there is enough capacity."""
+    start = make_hub("start", 0, 0)
+    end = make_hub("end", 2, 0)
+    restricted = make_hub("R", 1, 0, zone_type=ZoneType.RESTRICTED, max_drones=2)
+    graph = make_graph(
+        [restricted],
+        [Connection(src=start, dest=restricted, capacity=2),
+         Connection(src=restricted, dest=end, capacity=2)],
+        start, end
+    )
+
+    paths = route(graph, nb_drones=2)
+
+    # With capacity=2, two drones can be in transit at the same turn
+    # So they can go togehter the whole way
+    assert len(paths[0]) == len(paths[1])
+
 # Makespan
 def test_makespan_equals_last_arrival_turn() -> None:
     """Makespan must equal the maximum arrival turn across all paths."""

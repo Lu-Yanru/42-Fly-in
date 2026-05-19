@@ -85,10 +85,6 @@ class ReservationTable:
         restricted: set[tuple[str, int]] = set()
 
         for i, (hub, turn) in enumerate(path):
-            # Skip restricted zone reservation
-            if (hub, turn) not in restricted:
-                self.reserve_hub(hub, turn)
-
             if i == 0:
                 continue
 
@@ -105,6 +101,10 @@ class ReservationTable:
             if turn == prev_turn + 2:
                 self.reserve_transit(prev_hub, hub, prev_turn + 1)
                 restricted.add((hub, turn))
+
+            # Skip restricted zone reservation
+            if (hub, turn) not in restricted:
+                self.reserve_hub(hub, turn)
 
     # Internal helpers
     @staticmethod
