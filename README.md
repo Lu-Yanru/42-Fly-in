@@ -219,5 +219,6 @@ traverse this connection simultaneously: `max_link_capacity=<number>` (default: 
 ## Resources
 - [Youtube Graph Theory Playlist by WilliamFiset](https://www.youtube.com/playlist?list=PLDV1Zeh2NRsDGO4--qE8yH72HFL1Km93P)
 - Silver, D. (2005). Cooperative Pathfinding. *Proceedings of the AAAI Conference on Artificial Intelligence and Interactive Digital Entertainment*, 1(1), 117–122. https://doi.org/10.1609/aiide.v1i1.18726
+- [Pygame documentation](https://www.pygame.org/docs/)
 
-AI was used to explain pathfinding algorithms with step-by-step examples and compare their pros and cons.
+AI was used to explain pathfinding algorithms with step-by-step examples and compare their pros and cons, as well as create some of the test suites.

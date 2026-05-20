@@ -92,28 +92,18 @@ class Simulator:
         print("Total number of turns:", self.makespan)
 
         avg_drone_per_turn = self._drone_moves_per_turn()
-        print("Average number of drones moved per turn:", avg_drone_per_turn)
+        print("Average number of drones moved per turn:",
+              f"{avg_drone_per_turn:.2f}")
 
         sum_turns = 0
         for path in self.paths:
             sum_turns += path[-1][1]
         avg_turn_per_drone = sum_turns / self.nb_drones
-        print("Average number of turns per drone:", avg_turn_per_drone)
+        print("Average number of turns per drone:",
+              f"{avg_turn_per_drone:.2f}")
 
-        total_cost = 0.0
-        for drone in self.paths:
-            for zone, turn in drone:
-                zone_obj = self.graph.get_hub(zone)
-                if zone_obj.is_start:
-                    continue
-                type = zone_obj.zone_type
-                if type == ZoneType.PRIORITY:
-                    total_cost += 0.9
-                elif type == ZoneType.RESTRICTED:
-                    total_cost += 2.0
-                else:
-                    total_cost += 1.0
-        print("Total path cost:", total_cost)
+        total_cost = self._calculate_total_path_cost()
+        print("Total path cost:", f"{total_cost:.2f}")
 
     def _get_movements_in_turn(self) -> dict[int, list[str]]:
         """
@@ -210,3 +200,23 @@ class Simulator:
 
         total_moves = sum(drone_moves_per_turn.values())
         return total_moves / self.makespan
+
+    def _calculate_total_path_cost(self) -> float:
+        """
+        Calcualte the total path cost
+        (sum of weighted movement costs across all drones).
+        """
+        total_cost = 0.0
+        for drone in self.paths:
+            for zone, turn in drone:
+                zone_obj = self.graph.get_hub(zone)
+                if zone_obj.is_start:
+                    continue
+                type = zone_obj.zone_type
+                if type == ZoneType.PRIORITY:
+                    total_cost += 0.9
+                elif type == ZoneType.RESTRICTED:
+                    total_cost += 2.0
+                else:
+                    total_cost += 1.0
+        return total_cost

@@ -22,7 +22,7 @@ class SpaceTimeNode:
     turn: int
     g: float
     f: float
-    came_from: SpaceTimeNode | None = field(default=None, compare=False)
+    came_from: "SpaceTimeNode | None" = field(default=None, compare=False)
 
     def __lt__(self, other: "SpaceTimeNode") -> bool:
         """
