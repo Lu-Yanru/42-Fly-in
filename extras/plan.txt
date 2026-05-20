@@ -261,7 +261,7 @@ x 5. Compute and return final makespan
 x Testable: run on all provided easy maps, verify makespan meets benchmarks; verify two orderings are tried and best is kept; verify no two drones occupy the same zone at the same turn in the output.
 
 
-Phase 7 — Simulator
+x Phase 7 — Simulator
 Goal: Execute the routes turn by turn and produce the required output format.
 
 Steps:
@@ -279,10 +279,10 @@ x 2. For each turn from 1 to makespan:
 x 3. Collect all turn strings into a list and return
 x 4. Print final output — one line per turn
 
-Testable: run on manually constructed drone paths, verify output format exactly matches specification; verify delivered drones are not tracked after arrival; verify restricted zone transit is formatted correctly.
+x Testable: run on manually constructed drone paths, verify output format exactly matches specification; verify delivered drones are not tracked after arrival; verify restricted zone transit is formatted correctly.
 
 
-Phase 8 — Visualiser
+x Phase 8 — Visualiser
 Goal: Provide visual feedback of the simulation.
 
 Steps:
@@ -299,10 +299,10 @@ x 2. For each turn:
     - Print current drone positions
     - Print turn number and movement log
 
-Testable: run simulation on example maps and visually verify drone positions are correct each turn; verify zone colors match input file; verify delivered drones disappear from display.
+x Testable: run simulation on example maps and visually verify drone positions are correct each turn; verify zone colors match input file; verify delivered drones disappear from display.
 
 
-Phase 9 — Integration and Benchmarking
+x Phase 9 — Integration and Benchmarking
 Goal: Connect all components, run end-to-end on all provided maps, verify benchmarks.
 
 Steps:
@@ -324,7 +324,7 @@ x 4. Add secondary metrics output (optional):
 
 x 5. Run mypy and flake8 across all files, fix all type errors and style violations
 
-Testable: full end-to-end run on every provided map file produces correct output format, meets performance benchmarks, and passes mypy and flake8 with zero errors.
+x Testable: full end-to-end run on every provided map file produces correct output format, meets performance benchmarks, and passes mypy and flake8 with zero errors.
 
 
 

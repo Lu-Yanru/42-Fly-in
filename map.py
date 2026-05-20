@@ -14,13 +14,6 @@ from enum import Enum
 from pydantic import BaseModel, Field, model_validator
 
 
-class Drone(BaseModel):
-    id: int
-    current_zone: str
-    path: list[tuple[str, int]]
-    delivered: bool
-
-
 class ZoneType(Enum):
     """Possible zone type values."""
     NORMAL = "normal"
