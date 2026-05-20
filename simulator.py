@@ -209,10 +209,9 @@ class Simulator:
         total_cost = 0.0
         for drone in self.paths:
             for zone, turn in drone:
-                zone_obj = self.graph.get_hub(zone)
-                if zone_obj.is_start:
+                if turn == 0:
                     continue
-                type = zone_obj.zone_type
+                type = self.graph.get_hub(zone).zone_type
                 if type == ZoneType.PRIORITY:
                     total_cost += 0.9
                 elif type == ZoneType.RESTRICTED:

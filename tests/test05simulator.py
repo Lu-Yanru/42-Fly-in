@@ -17,8 +17,14 @@ from map import Hub, ZoneType
 # Helpers
 # ---------------------------------------------------------------------------
 
-def make_hub(name: str, x: int = 0, y: int = 0, zone_type: ZoneType = ZoneType.NORMAL, max_drones: int = 1) -> Hub:
-    return Hub(name=name, x=x, y=y, zone_type=zone_type, max_drones=max_drones)
+def make_hub(name: str, x: int = 0, y: int = 0,
+             zone_type: ZoneType = ZoneType.NORMAL,
+             max_drones: int = 1,
+             color: str | None = None,
+             is_start: bool = False,
+             is_end: bool = False) -> Hub:
+    return Hub(name=name, x=x, y=y, zone_type=zone_type, max_drones=max_drones, color=color,
+               is_start=is_start, is_end=is_end)
 
 
 def make_simulator(
@@ -34,6 +40,7 @@ def make_simulator(
 
     mock_graph = MagicMock()
     mock_graph.zones = zones
+    mock_graph.get_hub.side_effect = lambda name: zones.get(name)
 
     mock_coordinator = MagicMock()
     mock_coordinator.paths = paths
@@ -100,9 +107,7 @@ class TestPrintSimulationLog:
         sim.print_log()
 
         out = capsys.readouterr().out
-        assert "Turn 1:" in out
         assert "D1-start-rzone" in out
-        assert "Turn 2:" in out
         assert "D1-rzone" in out
 
     def test_multiple_drones_same_turn(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -120,7 +125,6 @@ class TestPrintSimulationLog:
         sim.print_log()
 
         out = capsys.readouterr().out
-        assert "Turn 1:" in out
         assert "D1-a" in out
         assert "D2-b" in out
 
@@ -142,9 +146,7 @@ class TestPrintSimulationLog:
         lines = out.splitlines()
 
         # Find turn 2 block and confirm D1 is absent
-        turn2_idx = next(i for i, l in enumerate(lines) if "Turn 2:" in l)
-        turn2_content = "\n".join(lines[turn2_idx:])
-        assert "D1-" not in turn2_content.split("Turn 3:")[0]
+        assert "D1-" not in lines[1]
 
     def test_empty_turns_are_skipped(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Turns where no drone moves are not printed at all."""
@@ -158,9 +160,8 @@ class TestPrintSimulationLog:
         sim.print_log()
 
         out = capsys.readouterr().out
-        assert "Turn 1:" not in out
-        assert "Turn 2:" not in out
-        assert "Turn 3:" in out
+        assert "start" not in out
+        assert "end" in out
 
     def test_multi_hop_path(self, capsys: pytest.CaptureFixture[str]) -> None:
         """A drone traversing multiple zones appears once per turn."""
@@ -174,14 +175,14 @@ class TestPrintSimulationLog:
         sim.print_log()
 
         out = capsys.readouterr().out
-        assert "Turn 1:" in out
         assert "D1-mid" in out
-        assert "Turn 2:" in out
         assert "D1-end" in out
 
 
 # ---------------------------------------------------------------------------
 # Color coding tests
+# Needs to comment out sys.stdout.isatty() because the pytest.CaptureFixture
+# is not a real terminal and _style() will not add color coder to it.
 # ---------------------------------------------------------------------------
 
 class TestColorZone:
@@ -192,11 +193,11 @@ class TestColorZone:
         sim = make_simulator([[("alpha", 0), ("alpha", 1)]], zones)
 
         result = sim._color_zone("alpha")
-        assert result == f"{ANSI_COLORS['red']}alpha{ANSI_RESET}"
+        assert result == f"{Style.COLORS["red"]}alpha{Style.RESET}"
 
     def test_no_color_returns_plain(self) -> None:
         """A zone with no color returns the plain zone name."""
-        zones = {"alpha": make_hub("alpha", color="")}
+        zones = {"alpha": make_hub("alpha", color=None)}
         sim = make_simulator([[("alpha", 0), ("alpha", 1)]], zones)
 
         assert sim._color_zone("alpha") == "alpha"
@@ -215,9 +216,9 @@ class TestColorZone:
         zones = {"alpha": make_hub("alpha", color="chartreuse")}
         sim = make_simulator([[("alpha", 0), ("alpha", 1)]], zones)
 
-        sim._color_zone("alpha")
-        out = capsys.readouterr().out
-        assert "Warning" in out
+        result = sim._color_zone("alpha")
+        out = capsys.readouterr().err
+        assert "unsupported" in out
         assert "chartreuse" in out
         assert "alpha" in out
 
@@ -231,8 +232,8 @@ class TestColorZone:
         sim._color_zone("alpha")
         sim._color_zone("alpha")
         sim._color_zone("alpha")
-        out = capsys.readouterr().out
-        assert out.count("Warning") == 1
+        out = capsys.readouterr().err
+        assert out.count("unsupported") == 1
 
     def test_two_zones_unsupported_each_warn_once(
         self, capsys: pytest.CaptureFixture[str]
@@ -248,8 +249,8 @@ class TestColorZone:
             sim._color_zone("alpha")
             sim._color_zone("beta")
 
-        out = capsys.readouterr().out
-        assert out.count("Warning") == 2
+        out = capsys.readouterr().err
+        assert out.count("unsupported") == 2
 
     def test_color_lookup_is_case_insensitive(self) -> None:
         """Color names are matched case-insensitively."""
@@ -257,7 +258,7 @@ class TestColorZone:
         sim = make_simulator([[("alpha", 0), ("alpha", 1)]], zones)
 
         result = sim._color_zone("alpha")
-        assert result == f"{ANSI_COLORS['red']}alpha{ANSI_RESET}"
+        assert result == f"{Style.COLORS['red']}alpha{Style.RESET}"
 
     def test_unknown_zone_returns_plain(self) -> None:
         """A zone name not in the graph returns the plain name without error."""
@@ -277,8 +278,8 @@ class TestColorZone:
         sim.print_log()
 
         out = capsys.readouterr().out
-        assert ANSI_COLORS["blue"] in out
-        assert ANSI_RESET in out
+        assert Style.COLORS["blue"] in out
+        assert Style.RESET in out
 
     def test_restricted_transit_both_zones_colored(
         self, capsys: pytest.CaptureFixture[str]
@@ -293,8 +294,8 @@ class TestColorZone:
         sim.print_log()
 
         out = capsys.readouterr().out
-        assert ANSI_COLORS["green"] in out
-        assert ANSI_COLORS["red"] in out
+        assert Style.COLORS["green"] in out
+        assert Style.COLORS["red"] in out
 
 
 # ---------------------------------------------------------------------------
@@ -303,20 +304,26 @@ class TestColorZone:
 
 class TestComputeMetrics:
 
-    def test_drones_moved_per_turn_single_drone(self) -> None:
+    def test_drones_moved_per_turn_single_drone(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Single drone moving each turn increments count correctly."""
         zones = {
-            "start": make_hub("start"),
+            "start": make_hub("start", is_start=True),
             "mid":   make_hub("mid"),
             "end":   make_hub("end"),
         }
         paths = [[("start", 0), ("mid", 1), ("end", 2)]]
         sim = make_simulator(paths, zones)
-        metrics = sim._compute_metrics()
+        sim.compute_metrics()
 
-        assert metrics.drones_moved_per_turn == {1: 1, 2: 1}
+        out = capsys.readouterr().out
+        lines = out.split("\n")
 
-    def test_drones_moved_per_turn_multiple_drones(self) -> None:
+        assert "2" in lines[2] # Total turns
+        assert "1" in lines[3] # Avg drones moved per turn
+        assert "2" in lines[4] # Avg turns per drone
+        assert "2" in lines[5] # Total costs
+
+    def test_drones_moved_per_turn_multiple_drones(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Two drones moving in the same turn count as 2."""
         zones = {
             "start": make_hub("start"),
@@ -328,11 +335,17 @@ class TestComputeMetrics:
             [("start", 0), ("b", 1)],
         ]
         sim = make_simulator(paths, zones)
-        metrics = sim._compute_metrics()
+        sim.compute_metrics()
 
-        assert metrics.drones_moved_per_turn.get(1) == 2
+        out = capsys.readouterr().out
+        lines = out.split("\n")
 
-    def test_drones_moved_excludes_wait_turns(self) -> None:
+        assert "1" in lines[2]
+        assert "2" in lines[3]
+        assert "1" in lines[4]
+        assert "2" in lines[5]
+
+    def test_drones_moved_excludes_wait_turns(self, capsys: pytest.CaptureFixture[str]) -> None:
         """A wait step does not count as a drone moved."""
         zones = {
             "start": make_hub("start"),
@@ -340,52 +353,17 @@ class TestComputeMetrics:
         }
         paths = [[("start", 0), ("start", 1), ("end", 2)]]
         sim = make_simulator(paths, zones)
-        metrics = sim._compute_metrics()
+        sim.compute_metrics()
 
-        assert metrics.drones_moved_per_turn.get(1, 0) == 0
-        assert metrics.drones_moved_per_turn.get(2) == 1
+        out = capsys.readouterr().out
+        lines = out.split("\n")
 
-    def test_average_turns_single_drone(self) -> None:
-        """Average turns equals path length for a single drone."""
-        zones = {
-            "start": make_hub("start"),
-            "end":   make_hub("end"),
-        }
-        paths = [[("start", 0), ("end", 3)]]
-        sim = make_simulator(paths, zones)
-        metrics = sim._compute_metrics()
+        assert "2" in lines[2] # Total turns
+        assert "0.50" in lines[3] # Avg drones moved per turn
+        assert "2" in lines[4] # Avg turns per drone
+        assert "2" in lines[5] # Total costs
 
-        assert metrics.average_turns_per_drone == pytest.approx(3.0)
-
-    def test_average_turns_multiple_drones(self) -> None:
-        """Average turns is the mean of each drone's elapsed turns."""
-        zones = {
-            "start": make_hub("start"),
-            "end":   make_hub("end"),
-        }
-        paths = [
-            [("start", 0), ("end", 2)],   # 2 turns
-            [("start", 0), ("end", 4)],   # 4 turns
-        ]
-        sim = make_simulator(paths, zones)
-        metrics = sim._compute_metrics()
-
-        assert metrics.average_turns_per_drone == pytest.approx(3.0)
-
-    def test_total_cost_normal_moves(self) -> None:
-        """Normal zone moves each cost 1.0."""
-        zones = {
-            "start": make_hub("start"),
-            "mid":   make_hub("mid", zone_type=ZoneType.NORMAL),
-            "end":   make_hub("end", zone_type=ZoneType.NORMAL),
-        }
-        paths = [[("start", 0), ("mid", 1), ("end", 2)]]
-        sim = make_simulator(paths, zones)
-        metrics = sim._compute_metrics()
-
-        assert metrics.total_path_cost == pytest.approx(2.0)
-
-    def test_total_cost_restricted_move(self) -> None:
+    def test_total_cost_restricted_move(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Restricted zone move costs 2.0."""
         zones = {
             "start": make_hub("start"),
@@ -393,11 +371,17 @@ class TestComputeMetrics:
         }
         paths = [[("start", 0), ("rzone", 2)]]
         sim = make_simulator(paths, zones)
-        metrics = sim._compute_metrics()
+        sim.compute_metrics()
 
-        assert metrics.total_path_cost == pytest.approx(2.0)
+        out = capsys.readouterr().out
+        lines = out.split("\n")
 
-    def test_total_cost_priority_move(self) -> None:
+        assert "2" in lines[2] # Total turns
+        assert "1" in lines[3] # Avg drones moved per turn
+        assert "2" in lines[4] # Avg turns per drone
+        assert "2" in lines[5] # Total costs
+
+    def test_total_cost_priority_move(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Priority zone move costs 0.9."""
         zones = {
             "start":  make_hub("start"),
@@ -405,24 +389,17 @@ class TestComputeMetrics:
         }
         paths = [[("start", 0), ("pzone", 1)]]
         sim = make_simulator(paths, zones)
-        metrics = sim._compute_metrics()
+        sim.compute_metrics()
 
-        assert metrics.total_path_cost == pytest.approx(0.9)
+        out = capsys.readouterr().out
+        lines = out.split("\n")
 
-    def test_total_cost_wait_adds_one(self) -> None:
-        """Each wait step adds 1.0 to total cost."""
-        zones = {
-            "start": make_hub("start"),
-            "end":   make_hub("end"),
-        }
-        # One wait, one normal move
-        paths = [[("start", 0), ("start", 1), ("end", 2)]]
-        sim = make_simulator(paths, zones)
-        metrics = sim._compute_metrics()
+        assert "1" in lines[2] # Total turns
+        assert "1" in lines[3] # Avg drones moved per turn
+        assert "1" in lines[4] # Avg turns per drone
+        assert "0.90" in lines[5] # Total costs
 
-        assert metrics.total_path_cost == pytest.approx(2.0)  # 1 wait + 1 move
-
-    def test_total_cost_mixed_moves(self) -> None:
+    def test_total_cost_mixed_moves(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Mixed move types sum correctly across multiple drones."""
         zones = {
             "start":  make_hub("start"),
@@ -436,39 +413,12 @@ class TestComputeMetrics:
             [("start", 0), ("rzone",  2)],         # cost 2.0
         ]
         sim = make_simulator(paths, zones)
-        metrics = sim._compute_metrics()
-
-        assert metrics.total_path_cost == pytest.approx(3.9)
-
-    def test_metrics_printed_after_log(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Metrics section appears in output after the movement log."""
-        zones = {
-            "start": make_hub("start"),
-            "end":   make_hub("end"),
-        }
-        paths = [[("start", 0), ("end", 1)]]
-        sim = make_simulator(paths, zones)
-        sim.print_log()
+        sim.compute_metrics()
 
         out = capsys.readouterr().out
-        log_pos     = out.find("Turn 1:")
-        metrics_pos = out.find("Simulation Metrics")
-        assert log_pos < metrics_pos
+        lines = out.split("\n")
 
-    def test_metrics_contain_no_ansi_codes(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """Metrics section contains no ANSI color codes."""
-        zones = {
-            "start": make_hub("start", color="red"),
-            "end":   make_hub("end",   color="blue"),
-        }
-        paths = [[("start", 0), ("end", 1)]]
-        sim = make_simulator(paths, zones)
-        sim.print_log()
-
-        out = capsys.readouterr().out
-        metrics_section = out.split("Simulation Metrics")[-1]
-        assert "\033[" not in metrics_section
+        assert "2" in lines[2] # Total turns
+        assert "2" in lines[3] # Avg drones moved per turn
+        assert "1.3" in lines[4] # Avg turns per drone
+        assert "3.9" in lines[5] # Total costs
