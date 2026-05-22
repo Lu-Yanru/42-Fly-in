@@ -14,18 +14,23 @@ from simulator import Simulator
 class Visualizer:
     def __init__(self, map: Map, simulator: Simulator) -> None:
         self.map = map
-        self.simulator = Simulator
+        self.all_hubs = map.hubs + [map.start, map.end]
+        self.simulator = simulator
 
-        self._SCREEN_W = 1280
-        self._SCREEN_H = 720
-        self.screen = pygame.display.set_mode((self._SCREEN_W, self._SCREEN_H))
+        pygame.init()
+        self._screen_w = 1280
+        self._screen_h = 720
+        self._padding = 100
+        self.screen = pygame.display.set_mode((self._screen_w, self._screen_h))
+        pygame.display.set_caption("Fly-in")
 
-        self.radius = 40
+        self._default_color = "gray"
+
+        self._compute_layout()
+        self._font = pygame.font.SysFont(None, max(12, self._radius))
 
     def visualize(self) -> None:
         # pygame setup
-        pygame.init()
-        pygame.display.set_caption("Fly-in")
         clock = pygame.time.Clock()
         running = True
 
@@ -49,24 +54,150 @@ class Visualizer:
 
         pygame.quit()
 
+    # Drawing map
     def _draw_hubs(self) -> None:
-        all_hubs = self.map.hubs + [self.map.start, self.map.end]
-        for hub in all_hubs:
+        """
+        Draw all hubs as circles.
+        """
+        for hub in self.all_hubs:
             color = hub.color
             if color is None:
-                color = "gray"
+                color = self._default_color
             x = self._calc_x_pos(hub.x)
             y = self._calc_y_pos(hub.y)
-            pygame.draw.circle(self.screen, color, (x, y), self.radius)
+            self._draw_hub_circle(x, y, color.lower())
+            self._draw_hub_label(hub.name, x, y)
+
+    def _draw_rainbow_circle(self, x: int, y: int) -> None:
+        """
+        Draw a rainbow circle by drawing concentric rings
+        from the outside in, each ring a slightly different hue.
+        """
+        hues = [0, 30, 60, 120, 180, 240, 270]
+        ring_count = len(hues)
+        for i, hue in enumerate(hues):
+            r = self._radius - i * (self._radius // ring_count)
+            if r <= 0:
+                break
+            color = pygame.Color(0, 0, 0)
+            color.hsva = (hue, 100, 100, 100)
+            pygame.draw.circle(self.screen, color, (x, y), r)
+
+    def _draw_hub_label(self, name: str, x: int, y: int) -> None:
+        """
+        Draw the name of the hub at the center of the circle.
+        """
+        text = self._font.render(self._abbreviate_zone_name(name),
+                                 True, "white")
+        rect = text.get_rect(center=(x, y))
+        self.screen.blit(text, rect)
+
+    def _draw_hub_circle(self, x: int, y: int, color: str) -> None:
+        """
+        Draw the hub circle itself.
+        Draw a sightly larger black circle around the colored circle itself
+        so the hubs don't blend in with the background when they have
+        the same color.
+        """
+        outline = 2
+        pygame.draw.circle(self.screen, "black", (x, y),
+                           self._radius + outline)
+        if color.lower() == "rainbow":
+            self._draw_rainbow_circle(x, y)
+        else:
+            try:
+                pygame.draw.circle(self.screen, color, (x, y),
+                                   self._radius)
+            except ValueError:
+                pygame.draw.circle(self.screen, self._default_color,
+                                   (x, y), self._radius)
+
+    # Layout helpers
+    def _compute_layout(self) -> None:
+        """
+        Compute scale, offset and radius so all hubs fit centered in the window
+        with padding.
+        """
+        xs = [h.x for h in self.all_hubs]
+        ys = [h.y for h in self.all_hubs]
+
+        minx, maxx = min(xs), max(xs)
+        miny, maxy = min(ys), max(ys)
+
+        spanx = maxx - minx
+        spany = maxy - miny
+
+        # Calculate scale
+        # Uniform for x and y, no streching
+        if spanx > 0:
+            scalex = (self._screen_w - 2 * self._padding) / spanx
+        else:
+            scalex = None
+        if spany > 0:
+            scaley = (self._screen_h - 2 * self._padding) / spany
+        else:
+            scaley = None
+        if scalex is None and scaley is not None:
+            self._scale = scaley
+        elif scalex is not None and scaley is None:
+            self._scale = scalex
+        elif scalex is not None and scaley is not None:
+            self._scale = min(scalex, scaley)
+        else:
+            self._scale = 1.0
+
+        # Center the scaled content in the window with offsets
+        if spanx > 0:
+            scaledw = spanx * self._scale
+            self._offset_x = ((self._screen_w - scaledw) / 2 -
+                              minx * self._scale)
+        else:
+            self._offset_x = self._screen_w / 2 - minx * self._scale
+        if spany > 0:
+            scaledh = spany * self._scale
+            self._offset_y = ((self._screen_h - scaledh) / 2 -
+                              miny * self._scale)
+        else:
+            self._offset_y = self._screen_h / 2 - minx * self._scale
+
+        # Radius proportional to scale
+        self._radius = max(10, min(40, int(self._scale * 0.2)))
 
     def _calc_x_pos(self, x: int) -> int:
         """
         Caluclate to x position of the center of the hub circule.
         """
-        return self._SCREEN_W // 2 + self.radius * x * 2
+        return int(x * self._scale + self._offset_x)
 
     def _calc_y_pos(self, y: int) -> int:
         """
         Caluclate to y position of the center of the hub circule.
         """
-        return self._SCREEN_H // 2 + self.radius * y * 2
+        return int(y * self._scale + self._offset_y)
+
+    @staticmethod
+    def _abbreviate_zone_name(name: str) -> str:
+        """
+        Takes a zone name and returns an abbreviated version.
+        waypoint -> w
+        waypoint1 -> w1
+        waiting_area -> wa
+        waiting_area1 -> wa1
+        """
+        res = ""
+        num = ""
+
+        for ch in reversed(name):
+            if not ch.isnumeric():
+                break
+            num += ch
+        if len(num) > 0:
+            num = num[::-1]
+
+        splitted_name = name.split("_")
+        if len(splitted_name) == 1:
+            return name[0] + num
+        else:
+            for word in splitted_name:
+                res += word[0]
+            return res + num

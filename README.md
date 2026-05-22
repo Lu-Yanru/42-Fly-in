@@ -119,7 +119,14 @@ Example:
     D1-goal D2-goal
 
 #### Graphical interface
-To enhance the user experience, a graphical interface is also implemented which displays the network and drone positions.
+To enhance the user experience, a graphical interface which displays the network and drone positions is also implemented using the `pygame` library.
+
+##### Layout
+The hubs are represented as circles colored with their defined colors in the map file. If no color is specified for the specified color is not supported, gray is used as default.
+
+The positions and sized of the hubs are calculated relative to the window center, so the network is always centered and all hubs can fit inside the window.
+
+The abbreviated hub names are shown in the center of the circle.
 
 ### Benchmarks
 
