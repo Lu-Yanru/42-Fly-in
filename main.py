@@ -7,6 +7,7 @@ from castar_coordinator import RoutingError
 from graph import GraphError
 from parser import Parser, ParseError
 from simulator import Simulator
+from visualizer import Visualizer
 
 
 def main() -> None:
@@ -17,9 +18,9 @@ def main() -> None:
         simulator = Simulator(map)
         simulator.print_log()
         simulator.compute_metrics()
-        # if parser.args.visualize:
-        #     visualizer = Visualizer(simulator)
-        #     visualizer.visualize()
+        if parser.args.visualize:
+            visualizer = Visualizer(map, simulator)
+            visualizer.visualize()
     except ParseError as e:
         print(e, file=sys.stderr)
     except GraphError as e:

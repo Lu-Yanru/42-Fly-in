@@ -5,46 +5,57 @@ usign the pygame library.
 """
 
 
-# Example file showing a circle moving on screen
 import pygame
 
-# pygame setup
-pygame.init()
-screen = pygame.display.set_mode((1280, 720))
-clock = pygame.time.Clock()
-running = True
-dt = 0.0
+from map import Map
+from simulator import Simulator
 
-player_pos = pygame.Vector2(screen.get_width() / 2, screen.get_height() / 2)
 
-while running:
-    # poll for events
-    # pygame.QUIT event means the user clicked X to close your window
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+class Visualizer:
+    def __init__(self, map: Map, simulator: Simulator) -> None:
+        self.map = map
+        self.simulator = Simulator
+        SCREEN_W = 1280
+        SCREEN_H = 720
+        self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
 
-    # fill the screen with a color to wipe away anything from last frame
-    screen.fill("purple")
+    def visualize(self) -> None:
+        # pygame setup
+        pygame.init()
+        pygame.display.set_caption("Fly-in")
+        clock = pygame.time.Clock()
+        running = True
 
-    pygame.draw.circle(screen, "red", player_pos, 40)
+        while running:
+            # poll for events
+            # pygame.QUIT event means the user clicked X to close your window
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
 
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_w]:
-        player_pos.y -= 300 * dt
-    if keys[pygame.K_s]:
-        player_pos.y += 300 * dt
-    if keys[pygame.K_a]:
-        player_pos.x -= 300 * dt
-    if keys[pygame.K_d]:
-        player_pos.x += 300 * dt
+            # fill the screen with a color
+            # to wipe away anything from last frame
+            self.screen.fill("purple")
 
-    # flip() the display to put your work on screen
-    pygame.display.flip()
+            self._draw_hubs()
 
-    # limits FPS to 60
-    # dt is delta time in seconds since last frame, used for framerate-
-    # independent physics.
-    dt = clock.tick(60) / 1000
+            # flip() the display to put your work on screen
+            pygame.display.flip()
 
-pygame.quit()
+            clock.tick(60)
+
+        pygame.quit()
+
+    def _draw_hubs(self) -> None:
+        all_hubs = self.map.hubs + [self.map.start, self.map.end]
+        for hub in all_hubs:
+            color = hub.color
+            if color is None:
+                color = "gray"
+            pygame.draw.circle(self.screen, color, (hub.x * 40, hub.y * 40), 40)
+
+    def _calc_x_pos(self, x: int) -> int:
+        """
+        Caluclate to x position of the center of the hub circule.
+        """
+        return x

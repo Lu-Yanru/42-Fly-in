@@ -123,18 +123,18 @@ To enhance the user experience, a graphical interface is also implemented which 
 
 ### Benchmarks
 
-| Difficulty | Map | Target | Status |
+| Difficulty | Map | Target | Result |
 |------------|-----|--------|--------|
-| 🟢 Easy | Linear path with 2 drones | ≤ 6 turns | ✅ |
-| 🟢 Easy | Simple fork with 4 drones | ≤ 8 turns | ✅ |
-| 🟢 Easy | Basic capacity with 4 drones | ≤ 6 turns | ✅ |
-| 🟡 Medium | Dead end trap with 5 drones | ≤ 12 turns | ✅ |
-| 🟡 Medium | Circular loop with 6 drones | ≤ 15 turns | ✅ |
-| 🟡 Medium | Priority puzzle with 5 drones | ≤ 12 turns | ✅ |
-| 🔴 Hard | Maze nightmare with 8 drones | ≤ 30 turns | ✅ |
-| 🔴 Hard | Capacity hell with 12 drones | ≤ 35 turns | ✅ |
-| 🔴 Hard | Ultimate challenge with 15 drones | ≤ 45 turns | ✅ |
-| 🏆 Challenger | The Impossible Dream with 25 drones | ≤ 45 turns | ✅ |
+| 🟢 Easy | Linear path with 2 drones | ≤ 6 turns | ✅ 4 turns|
+| 🟢 Easy | Simple fork with 4 drones | ≤ 8 turns | ✅ 4 turns|
+| 🟢 Easy | Basic capacity with 4 drones | ≤ 6 turns | ✅ 4 turns|
+| 🟡 Medium | Dead end trap with 5 drones | ≤ 12 turns | ✅ 8 turns|
+| 🟡 Medium | Circular loop with 6 drones | ≤ 15 turns | ✅ 10 turns|
+| 🟡 Medium | Priority puzzle with 5 drones | ≤ 12 turns | ✅ 6 turns|
+| 🔴 Hard | Maze nightmare with 8 drones | ≤ 30 turns | ✅ 13 turns|
+| 🔴 Hard | Capacity hell with 12 drones | ≤ 35 turns | ✅ 16 turns|
+| 🔴 Hard | Ultimate challenge with 15 drones | ≤ 45 turns | ✅ 26 turns|
+| 🏆 Challenger | The Impossible Dream with 25 drones | ≤ 45 turns | ✅ 42 turns|
 
 ## Instructions
 This project uses `uv` for dependency management and a `Makefile` to automate common tasks.
