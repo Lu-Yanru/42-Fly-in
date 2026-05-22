@@ -15,9 +15,12 @@ class Visualizer:
     def __init__(self, map: Map, simulator: Simulator) -> None:
         self.map = map
         self.simulator = Simulator
-        SCREEN_W = 1280
-        SCREEN_H = 720
-        self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
+
+        self._SCREEN_W = 1280
+        self._SCREEN_H = 720
+        self.screen = pygame.display.set_mode((self._SCREEN_W, self._SCREEN_H))
+
+        self.radius = 40
 
     def visualize(self) -> None:
         # pygame setup
@@ -52,10 +55,18 @@ class Visualizer:
             color = hub.color
             if color is None:
                 color = "gray"
-            pygame.draw.circle(self.screen, color, (hub.x * 40, hub.y * 40), 40)
+            x = self._calc_x_pos(hub.x)
+            y = self._calc_y_pos(hub.y)
+            pygame.draw.circle(self.screen, color, (x, y), self.radius)
 
     def _calc_x_pos(self, x: int) -> int:
         """
         Caluclate to x position of the center of the hub circule.
         """
-        return x
+        return self._SCREEN_W // 2 + self.radius * x * 2
+
+    def _calc_y_pos(self, y: int) -> int:
+        """
+        Caluclate to y position of the center of the hub circule.
+        """
+        return self._SCREEN_H // 2 + self.radius * y * 2
