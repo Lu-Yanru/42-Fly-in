@@ -59,14 +59,7 @@ class Visualizer:
 
             self._draw_connections()
             self._draw_hubs()
-            last_drone = None
-            for drone in self._drones:
-                drone.update(self._drone_speed)
-                drone.draw(self.screen, self._hub_positions)
-                last_drone = drone
-
-            if last_drone is not None and last_drone.progress >= 1.0:
-                pygame.time.wait(1000)
+            self._draw_drones()
 
             # flip() the display to put your work on screen
             pygame.display.flip()
@@ -148,6 +141,38 @@ class Visualizer:
             dest_y = self._calc_y_pos(dest_hub.y)
             pygame.draw.line(self.screen, "gray", (src_x, src_y),
                              (dest_x, dest_y), width=2)
+
+    # Draw drones
+    def _draw_drones(self) -> None:
+        """
+        Draw drones based on their position in the path.
+        Group drones by their current segment (src, dest).
+        Apply offset if there are several drones in one group
+        so they don't overlapp.
+        """
+        lane_spacing = self._radius * 0.35
+
+        groups: dict[tuple[str, str], list[DroneSprite]] = {}
+        for drone in self._drones:
+            if drone.done:
+                continue
+            src = drone.path[drone.segment][0]
+            if drone.segment < len(drone.path) - 1:
+                dest = drone.path[drone.segment + 1][0]
+            else:
+                dest = src
+            key = (src, dest)
+            groups.setdefault(key, []).append(drone)
+
+        # Assign offset within each group
+        for group in groups.values():
+            n = len(group)
+            for i, drone in enumerate(group):
+                drone.update(self._drone_speed)
+                # Centre the spread:
+                # e.g. n=1 → [0], n=2 → [-0.5, 0.5], n=3 → [-1, 0, 1]
+                offset = (i - (n - 1) / 2) * lane_spacing
+                drone.draw(self.screen, self._hub_positions, offset=offset)
 
     # Layout helpers
     def _compute_layout(self) -> None:
