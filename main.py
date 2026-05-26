@@ -27,6 +27,8 @@ def main() -> None:
         print(e, file=sys.stderr)
     except RoutingError as e:
         print(e, file=sys.stderr)
+    except KeyboardInterrupt:
+        print("Interrupted by user.", file=sys.stderr)
     # except Exception as e:
     #     print("An unexpected error occured: ", e, file=sys.stderr)
 

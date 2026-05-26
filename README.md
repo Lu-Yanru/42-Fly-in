@@ -128,6 +128,13 @@ The positions and sized of the hubs are calculated relative to the window center
 
 The abbreviated hub names are shown in the center of the circle.
 
+#### Animation
+Drones are represented as triangles that moves along the connections from hub to hub. The colors of the drones are calculated using drone_id in a loop. The drone positions are calculated so that they are always facing the destination hub. The animation speed can be adjusted by passing an argument to the `Visualizer` class (0.0 to 1.0).
+
+
+#### UI
+
+
 ### Benchmarks
 
 | Difficulty | Map | Target | Result |
@@ -141,7 +148,7 @@ The abbreviated hub names are shown in the center of the circle.
 | 🔴 Hard | Maze nightmare with 8 drones | ≤ 30 turns | ✅ 13 turns|
 | 🔴 Hard | Capacity hell with 12 drones | ≤ 35 turns | ✅ 16 turns|
 | 🔴 Hard | Ultimate challenge with 15 drones | ≤ 45 turns | ✅ 26 turns|
-| 🏆 Challenger | The Impossible Dream with 25 drones | ≤ 45 turns | ✅ 42 turns|
+| 🏆 Challenger | The Impossible Dream with 25 drones | ≤ 45 turns | ✅ 43 turns|
 
 ## Instructions
 This project uses `uv` for dependency management and a `Makefile` to automate common tasks.

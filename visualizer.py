@@ -7,12 +7,14 @@ usign the pygame library.
 
 import pygame
 
+from drone_sprite import DroneSprite
 from map import Map
 from simulator import Simulator
 
 
 class Visualizer:
-    def __init__(self, map: Map, simulator: Simulator) -> None:
+    def __init__(self, map: Map, simulator: Simulator,
+                 drone_speed: float = 0.02) -> None:
         self.map = map
         self.all_hubs = map.hubs + [map.start, map.end]
         self.simulator = simulator
@@ -25,9 +27,19 @@ class Visualizer:
         pygame.display.set_caption("Fly-in")
 
         self._default_color = "gray"
+        self._drone_speed = drone_speed
 
         self._compute_layout()
         self._font = pygame.font.SysFont(None, max(12, self._radius))
+
+        self._hub_positions: dict[str, tuple[int, int]] = {
+            hub.name: (self._calc_x_pos(hub.x), self._calc_y_pos(hub.y))
+            for hub in self.all_hubs
+        }
+        self._drones = [
+            DroneSprite(i, path, self._radius)
+            for i, path in enumerate(self.simulator.paths)
+        ]
 
     def visualize(self) -> None:
         # pygame setup
@@ -45,7 +57,16 @@ class Visualizer:
             # to wipe away anything from last frame
             self.screen.fill("purple")
 
+            self._draw_connections()
             self._draw_hubs()
+            last_drone = None
+            for drone in self._drones:
+                drone.update(self._drone_speed)
+                drone.draw(self.screen, self._hub_positions)
+                last_drone = drone
+
+            if last_drone is not None and last_drone.progress >= 1.0:
+                pygame.time.wait(1000)
 
             # flip() the display to put your work on screen
             pygame.display.flip()
@@ -55,6 +76,7 @@ class Visualizer:
         pygame.quit()
 
     # Drawing map
+    # Draw hubs
     def _draw_hubs(self) -> None:
         """
         Draw all hubs as circles.
@@ -67,6 +89,26 @@ class Visualizer:
             y = self._calc_y_pos(hub.y)
             self._draw_hub_circle(x, y, color.lower())
             self._draw_hub_label(hub.name, x, y)
+
+    def _draw_hub_circle(self, x: int, y: int, color: str) -> None:
+        """
+        Draw the hub circle itself.
+        Draw a sightly larger black circle around the colored circle itself
+        so the hubs don't blend in with the background when they have
+        the same color.
+        """
+        outline = 2
+        pygame.draw.circle(self.screen, "black", (x, y),
+                           self._radius + outline)
+        if color.lower() == "rainbow":
+            self._draw_rainbow_circle(x, y)
+        else:
+            try:
+                pygame.draw.circle(self.screen, color, (x, y),
+                                   self._radius)
+            except ValueError:
+                pygame.draw.circle(self.screen, self._default_color,
+                                   (x, y), self._radius)
 
     def _draw_rainbow_circle(self, x: int, y: int) -> None:
         """
@@ -92,25 +134,20 @@ class Visualizer:
         rect = text.get_rect(center=(x, y))
         self.screen.blit(text, rect)
 
-    def _draw_hub_circle(self, x: int, y: int, color: str) -> None:
+    # Draw connections
+    def _draw_connections(self) -> None:
         """
-        Draw the hub circle itself.
-        Draw a sightly larger black circle around the colored circle itself
-        so the hubs don't blend in with the background when they have
-        the same color.
+        Draw connections based on map information.
         """
-        outline = 2
-        pygame.draw.circle(self.screen, "black", (x, y),
-                           self._radius + outline)
-        if color.lower() == "rainbow":
-            self._draw_rainbow_circle(x, y)
-        else:
-            try:
-                pygame.draw.circle(self.screen, color, (x, y),
-                                   self._radius)
-            except ValueError:
-                pygame.draw.circle(self.screen, self._default_color,
-                                   (x, y), self._radius)
+        for conn in self.map.connections:
+            src_hub = conn.src
+            src_x = self._calc_x_pos(src_hub.x)
+            src_y = self._calc_y_pos(src_hub.y)
+            dest_hub = conn.dest
+            dest_x = self._calc_x_pos(dest_hub.x)
+            dest_y = self._calc_y_pos(dest_hub.y)
+            pygame.draw.line(self.screen, "gray", (src_x, src_y),
+                             (dest_x, dest_y), width=2)
 
     # Layout helpers
     def _compute_layout(self) -> None:
