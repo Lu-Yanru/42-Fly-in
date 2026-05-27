@@ -20,6 +20,11 @@ class Visualizer:
         self.all_hubs = map.hubs + [map.start, map.end]
         self.simulator = simulator
 
+        # Track capacity
+        self._reservations = simulator.reservations
+        self._current_turn = 0
+
+        # pygame setup
         pygame.init()
         self._screen_w = 1280
         self._screen_h = 720
@@ -27,12 +32,14 @@ class Visualizer:
         self.screen = pygame.display.set_mode((self._screen_w, self._screen_h))
         pygame.display.set_caption("Fly-in")
 
+        # Color, font and layout
         self._default_color = "gray"
-        self._drone_speed = drone_speed  # how much progress per frame 0.0-1.0
-        self._turn_pause = turn_pause  # how many ms pause per turn
-
         self._compute_layout()
         self._font = pygame.font.SysFont(None, max(12, self._radius))
+
+        # Animation
+        self._drone_speed = drone_speed  # how much progress per frame 0.0-1.0
+        self._turn_pause = turn_pause  # how many ms pause per turn
 
         self._hub_positions: dict[str, tuple[int, int]] = {
             hub.name: (self._calc_x_pos(hub.x), self._calc_y_pos(hub.y))
@@ -73,6 +80,7 @@ class Visualizer:
                 turn_timer += dt
                 if turn_timer >= self._turn_pause:
                     turn_timer = 0.0
+                    self._current_turn += 1
                     for drone in self._drones:
                         drone.advance_segment()
             # Reset turn_timer if there are still drones moving in the segment
@@ -106,6 +114,14 @@ class Visualizer:
             y = self._calc_y_pos(hub.y)
             self._draw_hub_circle(x, y, color.lower())
             self._draw_hub_label(hub.name, x, y)
+
+            # Capacity label below the hub
+            current = self._reservations._hub_res.get((hub.name,
+                                                       self._current_turn), 0)
+            max_cap = hub.max_drones
+            cap_text = f"{current}/{max_cap}"
+            self._draw_capacity_hub_label(cap_text, x - self._radius - 5,
+                                          y + self._radius + 5)
 
     def _draw_hub_circle(self, x: int, y: int, color: str) -> None:
         """
@@ -166,6 +182,16 @@ class Visualizer:
             pygame.draw.line(self.screen, "gray", (src_x, src_y),
                              (dest_x, dest_y), width=2)
 
+            # Capacity label at midpoint
+            mx, my = (src_x + dest_x) / 2, (src_y + dest_y) / 2
+            # Connection key is orderd alphabetically
+            a = min(conn.src.name, conn.dest.name)
+            b = max(conn.src.name, conn.dest.name)
+            current = self._reservations._conn_res.get((a, b,
+                                                        self._current_turn), 0)
+            cap_text = f"{current}/{conn.capacity}"
+            self._draw_capacity_conn_label(cap_text, mx, my)
+
     # Draw drones
     def _draw_drones(self) -> None:
         """
@@ -197,6 +223,33 @@ class Visualizer:
                 # e.g. n=1 → [0], n=2 → [-0.5, 0.5], n=3 → [-1, 0, 1]
                 offset = (i - (n - 1) / 2) * lane_spacing
                 drone.draw(self.screen, self._hub_positions, offset=offset)
+
+    # Draw capacity label
+    def _draw_capacity_hub_label(self, text: str, x: float, y: float) -> None:
+        """
+        Draw a label next to a hub or connection with
+        "curently_in_use_capacity/max_capacity" info.
+        """
+        label = self._font.render(text, True, "black")
+        # Make a dark rectangle background for readability
+        padding = 1
+        bg_rect = label.get_rect(center=(x, y)).inflate(padding * 2,
+                                                        padding * 2)
+        pygame.draw.rect(self.screen, (255, 255, 255), bg_rect)
+        self.screen.blit(label, label.get_rect(center=(x, y)))
+
+    def _draw_capacity_conn_label(self, text: str, x: float, y: float) -> None:
+        """
+        Draw a label next to a hub or connection with
+        "curently_in_use_capacity/max_capacity" info.
+        """
+        label = self._font.render(text, True, "white")
+        # Make a dark rectangle background for readability
+        padding = 1
+        bg_rect = label.get_rect(center=(x, y)).inflate(padding * 2,
+                                                        padding * 2)
+        pygame.draw.rect(self.screen, (30, 30, 30), bg_rect)
+        self.screen.blit(label, label.get_rect(center=(x, y)))
 
     # Layout helpers
     def _compute_layout(self) -> None:

@@ -58,11 +58,13 @@ class Simulator:
 
         self.nb_drones = map.nb_drones
         self.graph = Graph(map)
-        self.coordinator = CAStarCoordinator()
+        self.coordinator = CAStarCoordinator(map.nb_drones, self.graph)
 
         try:
-            self.coordinator.route_all_drones(map.nb_drones, self.graph)
+            self.coordinator.route_all_drones()
             self.paths = self.coordinator.paths
+            print(self.paths)
+            self.reservations = self.coordinator.reservations
             self.makespan = self.coordinator.get_makespan()
             self.turn_log = self._get_movements_in_turn()
         except (GraphError, RoutingError) as e:

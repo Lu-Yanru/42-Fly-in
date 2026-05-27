@@ -19,7 +19,7 @@ def main() -> None:
         simulator.print_log()
         simulator.compute_metrics()
         if parser.args.visualize:
-            visualizer = Visualizer(map, simulator)
+            visualizer = Visualizer(map, simulator, 0.005, 1000)
             visualizer.visualize()
     except ParseError as e:
         print(e, file=sys.stderr)
