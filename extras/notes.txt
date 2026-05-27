@@ -1,0 +1,4 @@
+todos
+- Update visualizer (drone animation) using AnimationStep rather than path
+- Update hub capacity on arrival and on departure, currently only on departure
+- Check if going back from priority zone is correct -> waiting and going back cost the same, may pick going back
