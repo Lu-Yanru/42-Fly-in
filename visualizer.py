@@ -14,7 +14,8 @@ from simulator import Simulator
 
 class Visualizer:
     def __init__(self, map: Map, simulator: Simulator,
-                 drone_speed: float = 0.02) -> None:
+                 drone_speed: float = 0.02,
+                 turn_pause: int = 400) -> None:
         self.map = map
         self.all_hubs = map.hubs + [map.start, map.end]
         self.simulator = simulator
@@ -27,7 +28,8 @@ class Visualizer:
         pygame.display.set_caption("Fly-in")
 
         self._default_color = "gray"
-        self._drone_speed = drone_speed
+        self._drone_speed = drone_speed  # how much progress per frame 0.0-1.0
+        self._turn_pause = turn_pause  # how many ms pause per turn
 
         self._compute_layout()
         self._font = pygame.font.SysFont(None, max(12, self._radius))
@@ -45,6 +47,7 @@ class Visualizer:
         # pygame setup
         clock = pygame.time.Clock()
         running = True
+        turn_timer = 0.0
 
         while running:
             # poll for events
@@ -52,6 +55,29 @@ class Visualizer:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+
+            # Limits FPS to 60
+            # Delta time in miliseconds since last frame
+            dt = clock.tick(60)
+
+            # Advance smooth animation every frame
+            for drone in self._drones:
+                drone.update(self._drone_speed)
+
+            # Advance to next segment only after pause
+            # and all active drones have finished their current segment
+            all_arrived = all(
+                d.done or d.progress >= 1.0 for d in self._drones
+            )
+            if all_arrived:
+                turn_timer += dt
+                if turn_timer >= self._turn_pause:
+                    turn_timer = 0.0
+                    for drone in self._drones:
+                        drone.advance_segment()
+            # Reset turn_timer if there are still drones moving in the segment
+            else:
+                turn_timer = 0.0
 
             # fill the screen with a color
             # to wipe away anything from last frame
@@ -63,8 +89,6 @@ class Visualizer:
 
             # flip() the display to put your work on screen
             pygame.display.flip()
-
-            clock.tick(60)
 
         pygame.quit()
 

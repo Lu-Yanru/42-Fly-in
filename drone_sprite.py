@@ -49,13 +49,20 @@ class DroneSprite:
         """
         if self.done:
             return
-        self.progress += speed
-        if self.progress >= 1.0:
-            self.progress = 0.0
-            self.segment += 1
-            if self.segment >= len(self.path) - 1:
-                self.done = True
-                self.segment = len(self.path) - 1
+        self.progress = min(1.0, self.progress + speed)
+
+    def advance_segment(self) -> None:
+        """
+        Advance once per turn to introduce a pause
+        between turns in the animation.
+        """
+        if self.done or self.progress < 1.0:
+            return
+        self.progress = 0.0
+        self.segment += 1
+        if self.segment >= len(self.path) - 1:
+            self.done = True
+            self.segment = len(self.path) - 1
 
     def _current_pos(self, hub_positions: dict[str, tuple[int, int]]) \
             -> tuple[float, float]:
