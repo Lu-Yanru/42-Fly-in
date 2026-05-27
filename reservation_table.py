@@ -82,9 +82,14 @@ class ReservationTable:
         Skip restricted zone reservations because reserve_transit
         reserve them already.
         """
-        restricted: set[tuple[str, int]] = set()
-
         for i, (hub, turn) in enumerate(path):
+            is_restricted_arrival = (
+                i > 0 and turn - path[i - 1][1] == 2
+            )
+
+            if not is_restricted_arrival:
+                self.reserve_hub(hub, turn)
+
             if i == 0:
                 continue
 
@@ -96,15 +101,8 @@ class ReservationTable:
 
             self.reserve_conn(prev_hub, hub, prev_turn)
 
-            # Reserve both transit and destination hub
-            # for restricted hub
-            if turn == prev_turn + 2:
+            if is_restricted_arrival:
                 self.reserve_transit(prev_hub, hub, prev_turn + 1)
-                restricted.add((hub, turn))
-
-            # Skip restricted zone reservation
-            if (hub, turn) not in restricted:
-                self.reserve_hub(hub, turn)
 
     # Internal helpers
     @staticmethod
