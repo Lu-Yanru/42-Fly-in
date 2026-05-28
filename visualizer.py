@@ -40,6 +40,7 @@ class Visualizer:
         # Animation
         self._drone_speed = drone_speed  # how much progress per frame 0.0-1.0
         self._turn_pause = turn_pause  # how many ms pause per turn
+        self._done_count = 0  # how many drones have finished their path
 
         self._hub_positions: dict[str, tuple[int, int]] = {
             hub.name: (self._calc_x_pos(hub.x), self._calc_y_pos(hub.y))
@@ -70,6 +71,12 @@ class Visualizer:
             # Advance smooth animation every frame
             for drone in self._drones:
                 drone.update(self._drone_speed)
+                # Check if a drone is just arriving at the end hub
+                if drone.just_arrived and not drone.done:
+                    step = drone._steps[drone.segment]
+                    if step.dest == self.map.end.name \
+                            and not step.is_first_transit:
+                        self._done_count += 1
 
             # Advance to next segment only after pause
             # and all active drones have finished their current segment
@@ -115,9 +122,14 @@ class Visualizer:
             self._draw_hub_circle(x, y, color.lower())
             self._draw_hub_label(hub.name, x, y)
 
-            # Capacity label below the hub
-            current = self._reservations._hub_res.get((hub.name,
-                                                       self._current_turn), 0)
+            if hub is self.map.end:
+                current = self._done_count
+            else:
+                # Capacity label below the hub
+                current = \
+                    self._reservations._hub_res.get((hub.name,
+                                                     self._display_turn()),
+                                                    0)
             max_cap = hub.max_drones
             cap_text = f"{current}/{max_cap}"
             self._draw_capacity_hub_label(cap_text, x - self._radius - 5,
@@ -188,7 +200,8 @@ class Visualizer:
             a = min(conn.src.name, conn.dest.name)
             b = max(conn.src.name, conn.dest.name)
             current = self._reservations._conn_res.get((a, b,
-                                                        self._current_turn), 0)
+                                                        self._current_turn),
+                                                       0)
             cap_text = f"{current}/{conn.capacity}"
             self._draw_capacity_conn_label(cap_text, mx, my)
 
@@ -196,22 +209,22 @@ class Visualizer:
     def _draw_drones(self) -> None:
         """
         Draw drones based on their position in the path.
-        Group drones by their current segment (src, dest).
+        Group drones by their current segment
+        (src, dest, is_first_transit, is_second_transit).
         Apply offset if there are several drones in one group
         so they don't overlapp.
         """
         lane_spacing = self._radius * 0.35
 
-        groups: dict[tuple[str, str], list[DroneSprite]] = {}
+        groups: dict[tuple[str, str, bool, bool], list[DroneSprite]] = {}
         for drone in self._drones:
             if drone.done:
                 continue
-            src = drone.path[drone.segment][0]
-            if drone.segment < len(drone.path) - 1:
-                dest = drone.path[drone.segment + 1][0]
-            else:
-                dest = src
-            key = (src, dest)
+            src = drone._steps[drone.segment].src
+            dest = drone._steps[drone.segment].dest
+            is_first_transit = drone._steps[drone.segment].is_first_transit
+            is_second_transit = drone._steps[drone.segment].is_second_transit
+            key = (src, dest, is_first_transit, is_second_transit)
             groups.setdefault(key, []).append(drone)
 
         # Assign offset within each group
@@ -225,6 +238,11 @@ class Visualizer:
                 drone.draw(self.screen, self._hub_positions, offset=offset)
 
     # Draw capacity label
+    def _display_turn(self) -> int:
+        """Return the turn whose occupancy should currently be displayed."""
+        all_arrived = all(d.done or d.progress >= 1.0 for d in self._drones)
+        return self._current_turn + 1 if all_arrived else self._current_turn
+
     def _draw_capacity_hub_label(self, text: str, x: float, y: float) -> None:
         """
         Draw a label next to a hub or connection with

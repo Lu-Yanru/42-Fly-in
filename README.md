@@ -131,9 +131,12 @@ The abbreviated hub names are shown in the center of the circle.
 #### Animation
 Drones are represented as triangles that moves along the connections from hub to hub. The colors of the drones are calculated using drone_id in a loop. The drone positions are calculated so that they are always facing the destination hub. The animation speed can be adjusted by passing an argument to the `Visualizer` class (0.0 to 1.0).
 
+The occupancy/max_capacity information are added as labels next to the hubs and connections to better monitor the capacity cosntraints. The occupancy information is updated every turn.
 
 #### UI
-
+Play/resume button
+per turn prev/next
+replay button
 
 ### Benchmarks
 

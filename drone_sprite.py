@@ -27,6 +27,7 @@ class DroneSprite:
         self.segment = 0  # index for animation steps
         self.progress = 0.0  # 0.0 at start of step, 1.0 at the end
         self.done = False
+        self.just_arrived = False
 
         self._size = int(radius * 0.75)
 
@@ -62,12 +63,18 @@ class DroneSprite:
         """
         if self.done:
             return
+        prev_progress = self.progress
         self.progress = min(1.0, self.progress + speed)
+        # Signal first arrival when progress in last frame <1.0
+        # and current progress >= 1.0
+        self.just_arrived = prev_progress < 1.0 and self.progress >= 1.0
 
     def advance_segment(self) -> None:
         """
         Advance once per turn to introduce a pause
         between turns in the animation.
+        Returns True if the drone just completed the path
+        this call.
         """
         if self.done or self.progress < 1.0:
             return

@@ -1,4 +1,12 @@
 todos
-- Update visualizer (drone animation) using AnimationStep rather than path
-- Update hub capacity on arrival and on departure, currently only on departure
-- Check if going back from priority zone is correct -> waiting and going back cost the same, may pick going back
+x Update visualizer (drone animation) using AnimationStep rather than path
+-> Update group key to include all step info and index steps instead of path
+x Update hub capacity on arrival and on departure, currently only on departure
+-> Add a _display_turn() function in Visualizer. If current turn is not finished, display capacity of current turn. If current turn is finished, display capacity info from next turn.
+x Check if going back from priority zone is correct -> waiting and going back cost the same, may pick going back
+-> Yes, waiting one turn costs 2 > going to a neighnor hub and going back to priority 1.9
+x Make end hub occupancy always count up
+- Make turn label
+- Make play/resume button
+- Make replay button
+- Per turn buttons prev/next
