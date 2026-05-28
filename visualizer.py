@@ -7,7 +7,7 @@ usign the pygame library.
 
 import pygame
 
-from drone_sprite import DroneSprite
+from drone_sprite import DroneSprite, DroneSnapshot
 from map import Map
 from simulator import Simulator
 
@@ -53,8 +53,13 @@ class Visualizer:
             for i, path in enumerate(self.simulator.paths)
         ]
 
+        # Previous states of each step per drone
+        self._snapshots: list[list[DroneSnapshot]] = []
+        self._done_snapshot: list[int] = []
+
         # UI
         self._paused = False
+        self._pause_after_turn = False  # Pause once this turn is completed
         self._pause_button = pygame.Rect(self._screen_w - 150, 60, 100, 36)
         self._replay_button = pygame.Rect(self._screen_w - 150, 90, 100, 36)
         self._prev_button = pygame.Rect(self._screen_w - 170, 25, 50, 36)
@@ -66,72 +71,115 @@ class Visualizer:
         running = True
         turn_timer = 0.0
 
+        reversing = False
+        self._save_snapshot()
+
         while running:
+            # Limits FPS to 60
+            # Delta time in miliseconds since last frame
+            dt = clock.tick(60)
+
             # poll for events
             # pygame.QUIT event means the user clicked X to close your window
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+
                 # Set game to be paused/resume when mouse click
                 # happen in the paused/resume button area
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if self._pause_button.collidepoint(event.pos):
                         self._paused = not self._paused
-                # Reset game progress when mouse click
-                # happen in the replay button area
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if self._replay_button.collidepoint(event.pos):
+                        self.pause_after_turn = False
+
+                    # Reset game progress when mouse click
+                    # happen in the replay button area
+                    elif self._replay_button.collidepoint(event.pos):
                         self._current_turn = 0
                         self._done_count = 0
                         self._paused = False
+                        reversing = False
+                        self._snapshots = []
+                        self._done_snapshot = []
                         for drone in self._drones:
                             drone.segment = 0
                             drone.progress = 0
                             drone.done = False
                             drone.just_arrived = False
-                # Revert to previous turn and pause when mouse click
-                # happen in the prev button area
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if self._prev_button.collidepoint(event.pos):
-                        self._paused = True
-                # Advance to next turn and pause when mouse click
-                # happen in the paused/resume button area
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if self._next_button.collidepoint(event.pos):
-                        self._paused = True
+                            drone.reverse = False
 
-            # Limits FPS to 60
-            # Delta time in miliseconds since last frame
-            dt = clock.tick(60)
+                    # Revert to previous turn and pause when mouse click
+                    # happen in the prev button area
+                    elif self._prev_button.collidepoint(event.pos):
+                        if self._current_turn > -1:
+                            self._current_turn -= 1
+                            # self._done_count = \
+                            #     self._done_snapshot[self._current_turn]
+                            turn_timer = 0.0
+                            reversing = True
+                            self._pause_after_turn = True
+                            self._paused = False
+                            for drone in self._drones:
+                                drone.reverse_to_previous()
+
+                    # Advance to next turn and pause when mouse click
+                    # happen in the paused/resume button area
+                    elif self._next_button.collidepoint(event.pos):
+                        self._paused = False
+                        reversing = False
+                        for drone in self._drones:
+                            drone.reverse = False
+                        self._pause_after_turn = True
 
             if not self._paused:
-                # Advance smooth animation every frame
-                for drone in self._drones:
-                    drone.update(self._drone_speed)
-                    # Check if a drone is just arriving at the end hub
-                    if drone.just_arrived and not drone.done:
-                        step = drone._steps[drone.segment]
-                        if step.dest == self.map.end.name \
-                                and not step.is_first_transit:
-                            self._done_count += 1
-                        drone.just_arrived = False
+                if reversing:
+                    for drone in self._drones:
+                        drone.update(self._drone_speed)
 
-                # Advance to next segment only after pause
-                # and all active drones have finished their current segment
-                all_arrived = all(
-                    d.done or d.progress >= 1.0 for d in self._drones
-                )
-                if all_arrived:
-                    turn_timer += dt
-                    if turn_timer >= self._turn_pause:
-                        turn_timer = 0.0
-                        self._current_turn += 1
+                    all_reversed = all(
+                        d.progress <= 0.0
+                        or (d.segment == 0 and d.progress <= 0.0)
+                        for d in self._drones
+                    )
+                    if all_reversed:
+                        reversing = False
+                        self._paused = True
                         for drone in self._drones:
-                            drone.advance_segment()
-                # Reset turn_timer if there are still
-                # drones moving in the segment
+                            drone.finish_reverse()
+
                 else:
-                    turn_timer = 0.0
+                    # Advance smooth animation every frame
+                    for drone in self._drones:
+                        drone.update(self._drone_speed)
+                        # Check if a drone is just arriving at the end hub
+                        if drone.just_arrived and not drone.done:
+                            step = drone._steps[drone.segment]
+                            if step.dest == self.map.end.name \
+                                    and not step.is_first_transit:
+                                self._done_count += 1
+                            drone.just_arrived = False
+
+                    # Advance to next segment only after pause
+                    # and all active drones have finished their current segment
+                    all_arrived = all(
+                        d.done or d.progress >= 1.0 for d in self._drones
+                    )
+                    if all_arrived:
+                        turn_timer += dt
+                        if self._pause_after_turn:
+                            self._paused = True
+                            self._pause_after_turn = False
+                            turn_timer = self._turn_pause
+                        if turn_timer >= self._turn_pause:
+                            turn_timer = 0.0
+                            self._save_snapshot()
+                            self._current_turn += 1
+                            for drone in self._drones:
+                                drone.advance_segment()
+                    # Reset turn_timer if there are still
+                    # drones moving in the segment
+                    else:
+                        turn_timer = 0.0
 
             # fill the screen with a color
             # to wipe away anything from last frame
@@ -451,3 +499,8 @@ class Visualizer:
         label = self._font_signs.render(text, True, "white")
         self.screen.blit(label,
                          label.get_rect(center=self._next_button.center))
+
+    def _save_snapshot(self) -> None:
+        """Save snapshots to the list of the class."""
+        self._snapshots.append([d.snapshot() for d in self._drones])
+        self._done_snapshot.append(self._done_count)

@@ -11,11 +11,21 @@ import pygame
 
 @dataclass
 class AnimationStep:
+    """Represents each step to animate."""
     src: str
     dest: str
     turn: int
     is_first_transit: bool = False
     is_second_transit: bool = False
+
+
+@dataclass
+class DroneSnapshot:
+    """Preserve a previous state of the drone animation to get back to."""
+    segment: int
+    progress: float
+    done: bool
+    just_arrived: bool
 
 
 class DroneSprite:
@@ -28,6 +38,7 @@ class DroneSprite:
         self.progress = 0.0  # 0.0 at start of step, 1.0 at the end
         self.done = False
         self.just_arrived = False
+        self.reverse = False
 
         self._size = int(radius * 0.75)
 
@@ -61,13 +72,19 @@ class DroneSprite:
         """
         Advance progress along the current segment.
         """
-        if self.done or self.progress >= 1.0:
+        if self.done and not self.reverse:
             return
         prev_progress = self.progress
-        self.progress = min(1.0, self.progress + speed)
+        if self.reverse:
+            self.progress = max(0.0, self.progress - speed)
+        else:
+            if self.progress >= 1.0:
+                return
+            self.progress = min(1.0, self.progress + speed)
         # Signal first arrival when progress in last frame <1.0
         # and current progress >= 1.0
-        self.just_arrived = prev_progress < 1.0 and self.progress >= 1.0
+        self.just_arrived = not self.reverse and prev_progress < 1.0 \
+            and self.progress >= 1.0
 
     def advance_segment(self) -> None:
         """
@@ -83,6 +100,33 @@ class DroneSprite:
         if self.segment >= len(self._steps):
             self.done = True
             self.segment = len(self._steps) - 1
+
+    def reverse_to_previous(self) -> None:
+        """Set up drone to animate backward to src_hub of the current step."""
+        self.reverse = True
+        self.done = False
+        self.just_arrived = False
+
+    def finish_reverse(self) -> None:
+        """When reverse animation completes, set back one segment."""
+        self.reverse = False
+        self.progress = 1.0
+        if self.segment > 0:
+            self.segment -= 1
+            self.progress = 1.0
+
+    # Create and restore snapshots
+    def snapshot(self) -> DroneSnapshot:
+        """Create a snapeshot of a drone's current state."""
+        return DroneSnapshot(self.segment, self.progress, self.done,
+                             self.just_arrived)
+
+    def restore(self, snapshot: DroneSnapshot) -> None:
+        """Restore the drone's state to a certain snapshot."""
+        self.segment = snapshot.segment
+        self.progress = snapshot.progress
+        self.done = snapshot.done
+        self.just_arrived = snapshot.just_arrived
 
     # Create animation steps
     def _build_animation_steps(self) -> list[AnimationStep]:
