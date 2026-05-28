@@ -8,5 +8,5 @@ x Check if going back from priority zone is correct -> waiting and going back co
 x Make end hub occupancy always count up
 x Make turn label
 x Make play/resume button
-- Make replay button
+x Make replay button
 - Per turn buttons prev/next

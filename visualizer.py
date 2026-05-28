@@ -38,6 +38,7 @@ class Visualizer:
         self._compute_layout()
         self._font = pygame.font.SysFont(None, max(12, self._radius))
         self._font_ui = pygame.font.SysFont(None, 30)
+        self._font_signs = pygame.font.SysFont(None, 45)
 
         # Animation
         self._drone_speed = drone_speed  # how much progress per frame 0.0-1.0
@@ -55,6 +56,9 @@ class Visualizer:
         # UI
         self._paused = False
         self._pause_button = pygame.Rect(self._screen_w - 150, 60, 100, 36)
+        self._replay_button = pygame.Rect(self._screen_w - 150, 90, 100, 36)
+        self._prev_button = pygame.Rect(self._screen_w - 170, 25, 50, 36)
+        self._next_button = pygame.Rect(self._screen_w - 70, 25, 50, 36)
 
     def visualize(self) -> None:
         # pygame setup
@@ -73,6 +77,28 @@ class Visualizer:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if self._pause_button.collidepoint(event.pos):
                         self._paused = not self._paused
+                # Reset game progress when mouse click
+                # happen in the replay button area
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self._replay_button.collidepoint(event.pos):
+                        self._current_turn = 0
+                        self._done_count = 0
+                        self._paused = False
+                        for drone in self._drones:
+                            drone.segment = 0
+                            drone.progress = 0
+                            drone.done = False
+                            drone.just_arrived = False
+                # Revert to previous turn and pause when mouse click
+                # happen in the prev button area
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self._prev_button.collidepoint(event.pos):
+                        self._paused = True
+                # Advance to next turn and pause when mouse click
+                # happen in the paused/resume button area
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self._next_button.collidepoint(event.pos):
+                        self._paused = True
 
             # Limits FPS to 60
             # Delta time in miliseconds since last frame
@@ -116,6 +142,9 @@ class Visualizer:
             self._draw_drones()
             self._draw_turn_label()
             self._draw_pause_button()
+            self._draw_replay_button()
+            self._draw_prev_button()
+            self._draw_next_button()
 
             # flip() the display to put your work on screen
             pygame.display.flip()
@@ -395,5 +424,30 @@ class Visualizer:
                          label.get_rect(center=self._pause_button.center))
 
     # Replay button
+    def _draw_replay_button(self) -> None:
+        """
+        Draw the pause/resume button.
+        """
+        text = "Replay"
+        label = self._font_ui.render(text, True, "white")
+        self.screen.blit(label,
+                         label.get_rect(center=self._replay_button.center))
 
     # Per turn animation
+    def _draw_prev_button(self) -> None:
+        """
+        Draw the previous turn button.
+        """
+        text = "-"
+        label = self._font_signs.render(text, True, "white")
+        self.screen.blit(label,
+                         label.get_rect(center=self._prev_button.center))
+
+    def _draw_next_button(self) -> None:
+        """
+        Draw the next turn button.
+        """
+        text = "+"
+        label = self._font_signs.render(text, True, "white")
+        self.screen.blit(label,
+                         label.get_rect(center=self._next_button.center))
