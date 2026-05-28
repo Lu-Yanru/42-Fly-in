@@ -113,8 +113,8 @@ class Visualizer:
                     elif self._prev_button.collidepoint(event.pos):
                         if self._current_turn > -1:
                             self._current_turn -= 1
-                            # self._done_count = \
-                            #     self._done_snapshot[self._current_turn]
+                            self._done_count = \
+                                self._done_snapshot[self._current_turn]
                             turn_timer = 0.0
                             reversing = True
                             self._pause_after_turn = True
