@@ -134,9 +134,11 @@ Drones are represented as triangles that moves along the connections from hub to
 The occupancy/max_capacity information are added as labels next to the hubs and connections to better monitor the capacity cosntraints. The occupancy information is updated every turn.
 
 #### UI
-Play/resume button
-per turn prev/next
-replay button
+The UI includes:
+- a turn number that shows which turn we are currently in,
+- a pause/resume button that pauses or resumes the animation when pressed,
+- a replay button that replays the animation from start when pressed,
+- -/+ buttons that plays the animation turn by turn (previous/next turn) when pressed.
 
 ### Benchmarks
 

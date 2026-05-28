@@ -61,7 +61,7 @@ class DroneSprite:
         """
         Advance progress along the current segment.
         """
-        if self.done:
+        if self.done or self.progress >= 1.0:
             return
         prev_progress = self.progress
         self.progress = min(1.0, self.progress + speed)

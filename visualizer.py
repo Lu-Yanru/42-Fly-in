@@ -23,6 +23,7 @@ class Visualizer:
         # Track capacity
         self._reservations = simulator.reservations
         self._current_turn = 0
+        self._done_count = 0  # how many drones have finished their path
 
         # pygame setup
         pygame.init()
@@ -36,11 +37,11 @@ class Visualizer:
         self._default_color = "gray"
         self._compute_layout()
         self._font = pygame.font.SysFont(None, max(12, self._radius))
+        self._font_ui = pygame.font.SysFont(None, 30)
 
         # Animation
         self._drone_speed = drone_speed  # how much progress per frame 0.0-1.0
         self._turn_pause = turn_pause  # how many ms pause per turn
-        self._done_count = 0  # how many drones have finished their path
 
         self._hub_positions: dict[str, tuple[int, int]] = {
             hub.name: (self._calc_x_pos(hub.x), self._calc_y_pos(hub.y))
@@ -50,6 +51,10 @@ class Visualizer:
             DroneSprite(i, path, self._radius)
             for i, path in enumerate(self.simulator.paths)
         ]
+
+        # UI
+        self._paused = False
+        self._pause_button = pygame.Rect(self._screen_w - 150, 60, 100, 36)
 
     def visualize(self) -> None:
         # pygame setup
@@ -63,36 +68,44 @@ class Visualizer:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                # Set game to be paused/resume when mouse click
+                # happen in the paused/resume button area
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self._pause_button.collidepoint(event.pos):
+                        self._paused = not self._paused
 
             # Limits FPS to 60
             # Delta time in miliseconds since last frame
             dt = clock.tick(60)
 
-            # Advance smooth animation every frame
-            for drone in self._drones:
-                drone.update(self._drone_speed)
-                # Check if a drone is just arriving at the end hub
-                if drone.just_arrived and not drone.done:
-                    step = drone._steps[drone.segment]
-                    if step.dest == self.map.end.name \
-                            and not step.is_first_transit:
-                        self._done_count += 1
+            if not self._paused:
+                # Advance smooth animation every frame
+                for drone in self._drones:
+                    drone.update(self._drone_speed)
+                    # Check if a drone is just arriving at the end hub
+                    if drone.just_arrived and not drone.done:
+                        step = drone._steps[drone.segment]
+                        if step.dest == self.map.end.name \
+                                and not step.is_first_transit:
+                            self._done_count += 1
+                        drone.just_arrived = False
 
-            # Advance to next segment only after pause
-            # and all active drones have finished their current segment
-            all_arrived = all(
-                d.done or d.progress >= 1.0 for d in self._drones
-            )
-            if all_arrived:
-                turn_timer += dt
-                if turn_timer >= self._turn_pause:
+                # Advance to next segment only after pause
+                # and all active drones have finished their current segment
+                all_arrived = all(
+                    d.done or d.progress >= 1.0 for d in self._drones
+                )
+                if all_arrived:
+                    turn_timer += dt
+                    if turn_timer >= self._turn_pause:
+                        turn_timer = 0.0
+                        self._current_turn += 1
+                        for drone in self._drones:
+                            drone.advance_segment()
+                # Reset turn_timer if there are still
+                # drones moving in the segment
+                else:
                     turn_timer = 0.0
-                    self._current_turn += 1
-                    for drone in self._drones:
-                        drone.advance_segment()
-            # Reset turn_timer if there are still drones moving in the segment
-            else:
-                turn_timer = 0.0
 
             # fill the screen with a color
             # to wipe away anything from last frame
@@ -101,6 +114,8 @@ class Visualizer:
             self._draw_connections()
             self._draw_hubs()
             self._draw_drones()
+            self._draw_turn_label()
+            self._draw_pause_button()
 
             # flip() the display to put your work on screen
             pygame.display.flip()
@@ -231,7 +246,6 @@ class Visualizer:
         for group in groups.values():
             n = len(group)
             for i, drone in enumerate(group):
-                drone.update(self._drone_speed)
                 # Centre the spread:
                 # e.g. n=1 → [0], n=2 → [-0.5, 0.5], n=3 → [-1, 0, 1]
                 offset = (i - (n - 1) / 2) * lane_spacing
@@ -358,3 +372,28 @@ class Visualizer:
             for word in splitted_name:
                 res += word[0]
             return res + num
+
+    # UI
+    # Turn label
+    def _draw_turn_label(self) -> None:
+        """
+        Draw the turn label that updates every turn.
+        """
+        text = f"Turn {self._drones[-1].segment + 1}"
+        label = self._font_ui.render(text, True, "white")
+        self.screen.blit(label,
+                         label.get_rect(center=(self._screen_w - 100, 50)))
+
+    # Pause/resume button
+    def _draw_pause_button(self) -> None:
+        """
+        Draw the pause/resume button.
+        """
+        text = "Resume" if self._paused else "Pause"
+        label = self._font_ui.render(text, True, "white")
+        self.screen.blit(label,
+                         label.get_rect(center=self._pause_button.center))
+
+    # Replay button
+
+    # Per turn animation
