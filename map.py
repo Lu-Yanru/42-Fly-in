@@ -40,7 +40,7 @@ class Hub(BaseModel):
 
         if self.zone_type != ZoneType.BLOCK \
                 and self.max_drones == 0:
-            raise ValueError("A non-blocked zone type must have capacity of"
+            raise ValueError("A non-blocked zone type must have capacity of "
                              "at least one drone.")
 
         return self

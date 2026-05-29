@@ -7,7 +7,7 @@ usign the pygame library.
 
 import pygame
 
-from drone_sprite import DroneSprite, DroneSnapshot
+from drone_sprite import DroneSprite
 from map import Map
 from simulator import Simulator
 
@@ -53,10 +53,6 @@ class Visualizer:
             for i, path in enumerate(self.simulator.paths)
         ]
 
-        # Previous states of each step per drone
-        self._snapshots: list[list[DroneSnapshot]] = []
-        self._done_snapshot: list[int] = []
-
         # UI
         self._paused = False
         self._pause_after_turn = False  # Pause once this turn is completed
@@ -72,7 +68,6 @@ class Visualizer:
         turn_timer = 0.0
 
         reversing = False
-        self._save_snapshot()
 
         while running:
             # Limits FPS to 60
@@ -99,8 +94,6 @@ class Visualizer:
                         self._done_count = 0
                         self._paused = False
                         reversing = False
-                        self._snapshots = []
-                        self._done_snapshot = []
                         for drone in self._drones:
                             drone.segment = 0
                             drone.progress = 0
@@ -113,8 +106,6 @@ class Visualizer:
                     elif self._prev_button.collidepoint(event.pos):
                         if self._current_turn > -1:
                             self._current_turn -= 1
-                            self._done_count = \
-                                self._done_snapshot[self._current_turn]
                             turn_timer = 0.0
                             reversing = True
                             self._pause_after_turn = True
@@ -172,7 +163,6 @@ class Visualizer:
                             turn_timer = self._turn_pause
                         if turn_timer >= self._turn_pause:
                             turn_timer = 0.0
-                            self._save_snapshot()
                             self._current_turn += 1
                             for drone in self._drones:
                                 drone.advance_segment()
@@ -456,7 +446,13 @@ class Visualizer:
         """
         Draw the turn label that updates every turn.
         """
-        text = f"Turn {self._drones[-1].segment + 1}"
+        new_turn_start = all(d.done or d.progress == 0.0 for d in self._drones)
+        all_done = all(d.done for d in self._drones)
+        if self._paused and new_turn_start and not all_done:
+            display_turn = self._drones[-1].segment
+        else:
+            display_turn = self._drones[-1].segment + 1
+        text = f"Turn {display_turn}"
         label = self._font_ui.render(text, True, "white")
         self.screen.blit(label,
                          label.get_rect(center=(self._screen_w - 100, 50)))
@@ -499,8 +495,3 @@ class Visualizer:
         label = self._font_signs.render(text, True, "white")
         self.screen.blit(label,
                          label.get_rect(center=self._next_button.center))
-
-    def _save_snapshot(self) -> None:
-        """Save snapshots to the list of the class."""
-        self._snapshots.append([d.snapshot() for d in self._drones])
-        self._done_snapshot.append(self._done_count)

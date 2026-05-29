@@ -19,15 +19,6 @@ class AnimationStep:
     is_second_transit: bool = False
 
 
-@dataclass
-class DroneSnapshot:
-    """Preserve a previous state of the drone animation to get back to."""
-    segment: int
-    progress: float
-    done: bool
-    just_arrived: bool
-
-
 class DroneSprite:
     """Visual representation of a drone."""
     def __init__(self, drone_id: int,
@@ -114,19 +105,6 @@ class DroneSprite:
         if self.segment > 0:
             self.segment -= 1
             self.progress = 1.0
-
-    # Create and restore snapshots
-    def snapshot(self) -> DroneSnapshot:
-        """Create a snapeshot of a drone's current state."""
-        return DroneSnapshot(self.segment, self.progress, self.done,
-                             self.just_arrived)
-
-    def restore(self, snapshot: DroneSnapshot) -> None:
-        """Restore the drone's state to a certain snapshot."""
-        self.segment = snapshot.segment
-        self.progress = snapshot.progress
-        self.done = snapshot.done
-        self.just_arrived = snapshot.just_arrived
 
     # Create animation steps
     def _build_animation_steps(self) -> list[AnimationStep]:
