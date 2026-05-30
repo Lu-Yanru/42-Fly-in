@@ -73,6 +73,7 @@ class Visualizer:
             # Limits FPS to 60
             # Delta time in miliseconds since last frame
             dt = clock.tick(60)
+            print(self._current_turn)
 
             # poll for events
             # pygame.QUIT event means the user clicked X to close your window
@@ -110,7 +111,7 @@ class Visualizer:
                             self._paused = False
                             self._reversing = True
                             for drone in self._drones:
-                                drone.start_reverse()
+                                drone.start_reverse(self._current_turn)
                             turn_timer = self._turn_pause
                             # self._pending_prev = True
 
@@ -140,6 +141,8 @@ class Visualizer:
                         self._pause_after_turn = False
                         for drone in self._drones:
                             drone.finish_reverse()
+                        if self._current_turn > 0:
+                            self._current_turn -= 1
 
                 else:
                     # Advance smooth animation every frame
@@ -167,7 +170,9 @@ class Visualizer:
                         #         drone.start_reverse()
                         if turn_timer >= self._turn_pause:
                             turn_timer = 0.0
-                            self._current_turn += 1
+                            all_done = all(d.done for d in self._drones)
+                            if not all_done:
+                                self._current_turn += 1
                             for drone in self._drones:
                                 drone.advance_segment()
                             if self._pause_after_turn:
