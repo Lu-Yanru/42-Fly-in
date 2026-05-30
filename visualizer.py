@@ -56,6 +56,8 @@ class Visualizer:
         # UI
         self._paused = False
         self._pause_after_turn = False  # Pause once this turn is completed
+        self._pending_prev = False  # Reverse once this turn is completed
+        self._reversing = False  # Whether the turn is currently reversing
         self._pause_button = pygame.Rect(self._screen_w - 150, 60, 100, 36)
         self._replay_button = pygame.Rect(self._screen_w - 150, 90, 100, 36)
         self._prev_button = pygame.Rect(self._screen_w - 170, 25, 50, 36)
@@ -66,8 +68,6 @@ class Visualizer:
         clock = pygame.time.Clock()
         running = True
         turn_timer = 0.0
-
-        reversing = False
 
         while running:
             # Limits FPS to 60
@@ -85,7 +85,8 @@ class Visualizer:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if self._pause_button.collidepoint(event.pos):
                         self._paused = not self._paused
-                        self.pause_after_turn = False
+                        self._pause_after_turn = False
+                        self._pending_prev = False
 
                     # Reset game progress when mouse click
                     # happen in the replay button area
@@ -93,7 +94,7 @@ class Visualizer:
                         self._current_turn = 0
                         self._done_count = 0
                         self._paused = False
-                        reversing = False
+                        self._reversing = False
                         for drone in self._drones:
                             drone.segment = 0
                             drone.progress = 0
@@ -104,37 +105,39 @@ class Visualizer:
                     # Revert to previous turn and pause when mouse click
                     # happen in the prev button area
                     elif self._prev_button.collidepoint(event.pos):
-                        if self._current_turn > -1:
-                            self._current_turn -= 1
-                            turn_timer = 0.0
-                            reversing = True
+                        if self._current_turn > 0:
                             self._pause_after_turn = True
                             self._paused = False
+                            self._reversing = True
                             for drone in self._drones:
-                                drone.reverse_to_previous()
+                                drone.start_reverse()
+                            turn_timer = self._turn_pause
+                            # self._pending_prev = True
 
                     # Advance to next turn and pause when mouse click
                     # happen in the paused/resume button area
                     elif self._next_button.collidepoint(event.pos):
                         self._paused = False
-                        reversing = False
+                        self._reversing = False
                         for drone in self._drones:
                             drone.reverse = False
                         self._pause_after_turn = True
+                        turn_timer = self._turn_pause
 
+            # Drone animation
             if not self._paused:
-                if reversing:
+                if self._reversing:
                     for drone in self._drones:
                         drone.update(self._drone_speed)
 
                     all_reversed = all(
-                        d.progress <= 0.0
-                        or (d.segment == 0 and d.progress <= 0.0)
+                        d.is_reverse_complete()
                         for d in self._drones
                     )
                     if all_reversed:
-                        reversing = False
+                        self._reversing = False
                         self._paused = True
+                        self._pause_after_turn = False
                         for drone in self._drones:
                             drone.finish_reverse()
 
@@ -157,15 +160,19 @@ class Visualizer:
                     )
                     if all_arrived:
                         turn_timer += dt
-                        if self._pause_after_turn:
-                            self._paused = True
-                            self._pause_after_turn = False
-                            turn_timer = self._turn_pause
+                        # if self._pending_prev:
+                        #     self._pending_prev = False
+                        #     self._reversing = True
+                        #     for drone in self._drones:
+                        #         drone.start_reverse()
                         if turn_timer >= self._turn_pause:
                             turn_timer = 0.0
                             self._current_turn += 1
                             for drone in self._drones:
                                 drone.advance_segment()
+                            if self._pause_after_turn:
+                                self._paused = True
+                                self._pause_after_turn = False
                     # Reset turn_timer if there are still
                     # drones moving in the segment
                     else:

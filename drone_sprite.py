@@ -92,19 +92,29 @@ class DroneSprite:
             self.done = True
             self.segment = len(self._steps) - 1
 
-    def reverse_to_previous(self) -> None:
+    def start_reverse(self) -> None:
         """Set up drone to animate backward to src_hub of the current step."""
-        self.reverse = True
-        self.done = False
         self.just_arrived = False
+        self.done = False
+        if self.segment > 0:
+            self.reverse = True
+            if self.progress == 0.0:
+                self.segment -= 1
+                self.progress = 1.0
 
     def finish_reverse(self) -> None:
-        """When reverse animation completes, set back one segment."""
+        """Drone arrives at src_hub of the current turn."""
         self.reverse = False
-        self.progress = 1.0
-        if self.segment > 0:
-            self.segment -= 1
-            self.progress = 1.0
+        self.progress = 0.0
+
+    def is_reverse_complete(self) -> bool:
+        """
+        Whether reversing is completed for the current turn.
+        (progress at 0.)
+        """
+        if not self.reverse:
+            return True
+        return self.progress <= 0.0
 
     # Create animation steps
     def _build_animation_steps(self) -> list[AnimationStep]:
