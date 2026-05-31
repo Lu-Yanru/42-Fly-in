@@ -4,7 +4,7 @@ x Update visualizer (drone animation) using AnimationStep rather than path
 x Update hub capacity on arrival and on departure, currently only on departure
 -> Add a _display_turn() function in Visualizer. If current turn is not finished, display capacity of current turn. If current turn is finished, display capacity info from next turn.
 x Check if going back from priority zone is correct -> waiting and going back cost the same, may pick going back
--> Yes, waiting one turn costs 2 > going to a neighnor hub and going back to priority 1.9
+-> Yes, waiting one turn costs 2 > going to a neighbor hub and going back to priority 1.9
 x Make end hub occupancy always count up
 x Make turn label
 x Make play/resume button
@@ -12,7 +12,7 @@ x Make replay button
 - Per turn buttons prev/next
     x reverting to the first step: The first drone(s) does not retract but just stays at the second hub
     x After drones as done, reverting returns all done drones back to the end hub and start backtracking from there, disregarding how many turns before they reached the goal. I just need the drones that are delivered in the previous turn to come back.
-    - Reversing mid-segment mess up turn/segment count
+    x Reversing mid-segment mess up turn/segment count
     - _delivered_count tracking is not correct as it just tracks the previous number.
-    - Check other capacity labels
+    x Check other capacity labels
     x turn label is changing after drones arrived and not when drone departures. Should only advance segment when next is pressed.

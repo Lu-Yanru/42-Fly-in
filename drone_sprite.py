@@ -30,6 +30,7 @@ class DroneSprite:
         self.done = False
         self.just_arrived = False
         self.reverse = False
+        self.wait = 0  # How many turns from done until finish
 
         self._size = int(radius * 0.75)
 
@@ -59,6 +60,11 @@ class DroneSprite:
         pygame.draw.polygon(screen, self._color, points)
         pygame.draw.polygon(screen, "black", points, 2)  # outline
 
+    def start_segment(self, makespan: int) -> None:
+        """Set up drones for the start of a segment."""
+        if self.done and self.wait < makespan - 1 - self.segment:
+            self.wait += 1
+
     def update(self, speed: float) -> None:
         """
         Advance progress along the current segment.
@@ -79,10 +85,10 @@ class DroneSprite:
 
     def advance_segment(self) -> None:
         """
-        Advance once per turn to introduce a pause
-        between turns in the animation.
-        Returns True if the drone just completed the path
-        this call.
+        Advance one segment per turn
+        and set progress to 0 (start of next turn).
+        If drone is done but other drones are still advancing,
+        add one to wait turn.
         """
         if self.done or self.progress < 1.0:
             return
@@ -95,24 +101,35 @@ class DroneSprite:
     def start_reverse(self, turn: int) -> None:
         """Set up drone to animate backward to src_hub of the current step."""
         self.just_arrived = False
-        if self.done and self.segment + 1 == turn:
-            self.done = False
-            self.reverse = True
-            self.segment = len(self._steps) - 1
-            self.progress = 1.0
-        elif not self.done:
+        if not self.done:
+            # If a drone is not done yet, start reversing
+            # And if it is at the start of the current turn,
+            # go to the end of last turn
             if self.segment > 0:
                 self.reverse = True
-                if self.progress == 0.0:
+                if self.progress == 0.0 and self.segment == turn:
                     self.segment -= 1
                     self.progress = 1.0
         else:
-            self.reverse = False
+            # If a drone is done, it should come back
+            # when the current turn is its last segment.
+            # if (self.wait == 0 and self.segment == turn) \
+            #         or (self.wait <= 0 and self.segment == turn - 1):
+            if self.wait <= 0:
+                self.progress = 1.0
+                self.done = False
+                self.reverse = True
+            else:
+                # Wait for its turn to come back after done
+                self.reverse = False
 
-    def finish_reverse(self) -> None:
+    def finish_reverse(self, turn: int) -> None:
         """Drone arrives at src_hub of the current turn."""
+        if self.done and not self.reverse:
+            self.wait -= 1
         self.reverse = False
-        self.progress = 0.0
+        if self.segment == turn:
+            self.progress = 0.0
 
     def is_reverse_complete(self) -> bool:
         """

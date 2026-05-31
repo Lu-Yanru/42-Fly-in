@@ -22,7 +22,6 @@ class Visualizer:
 
         # Track capacity
         self._reservations = simulator.reservations
-        self._current_turn = 0
         self._done_count = 0  # how many drones have finished their path
 
         # pygame setup
@@ -52,6 +51,7 @@ class Visualizer:
             DroneSprite(i, path, self._radius)
             for i, path in enumerate(self.simulator.paths)
         ]
+        self._current_turn = self._drones[-1].segment
 
         # UI
         self._paused = False
@@ -73,7 +73,13 @@ class Visualizer:
             # Limits FPS to 60
             # Delta time in miliseconds since last frame
             dt = clock.tick(60)
-            print(self._current_turn)
+            self._current_turn = self._drones[-1].segment
+
+            print("current turn:", self._current_turn)
+            for d in self._drones:
+                print("drone", d.id, "segment", d.segment,
+                      "progress", d.progress, "wait", d.wait,
+                      "done", d.done, "reverse", d.reverse)
 
             # poll for events
             # pygame.QUIT event means the user clicked X to close your window
@@ -92,7 +98,7 @@ class Visualizer:
                     # Reset game progress when mouse click
                     # happen in the replay button area
                     elif self._replay_button.collidepoint(event.pos):
-                        self._current_turn = 0
+                        # self._current_turn = 0
                         self._done_count = 0
                         self._paused = False
                         self._reversing = False
@@ -102,6 +108,7 @@ class Visualizer:
                             drone.done = False
                             drone.just_arrived = False
                             drone.reverse = False
+                            drone.wait = 0
 
                     # Revert to previous turn and pause when mouse click
                     # happen in the prev button area
@@ -113,7 +120,6 @@ class Visualizer:
                             for drone in self._drones:
                                 drone.start_reverse(self._current_turn)
                             turn_timer = self._turn_pause
-                            # self._pending_prev = True
 
                     # Advance to next turn and pause when mouse click
                     # happen in the paused/resume button area
@@ -140,21 +146,25 @@ class Visualizer:
                         self._paused = True
                         self._pause_after_turn = False
                         for drone in self._drones:
-                            drone.finish_reverse()
-                        if self._current_turn > 0:
-                            self._current_turn -= 1
+                            drone.finish_reverse(self._current_turn)
 
                 else:
+                    all_at_start = all(
+                        d.done or d.progress <= 0.0 for d in self._drones
+                    )
+                    if all_at_start:
+                        for drone in self._drones:
+                            drone.start_segment(self.simulator.makespan)
                     # Advance smooth animation every frame
                     for drone in self._drones:
                         drone.update(self._drone_speed)
                         # Check if a drone is just arriving at the end hub
-                        if drone.just_arrived and not drone.done:
-                            step = drone._steps[drone.segment]
-                            if step.dest == self.map.end.name \
-                                    and not step.is_first_transit:
-                                self._done_count += 1
-                            drone.just_arrived = False
+                        # if drone.just_arrived and not drone.done:
+                        #     step = drone._steps[drone.segment]
+                        #     if step.dest == self.map.end.name \
+                        #             and not step.is_first_transit:
+                        #         self._done_count += 1
+                        #     drone.just_arrived = False
 
                     # Advance to next segment only after pause
                     # and all active drones have finished their current segment
@@ -163,16 +173,8 @@ class Visualizer:
                     )
                     if all_arrived:
                         turn_timer += dt
-                        # if self._pending_prev:
-                        #     self._pending_prev = False
-                        #     self._reversing = True
-                        #     for drone in self._drones:
-                        #         drone.start_reverse()
                         if turn_timer >= self._turn_pause:
                             turn_timer = 0.0
-                            all_done = all(d.done for d in self._drones)
-                            if not all_done:
-                                self._current_turn += 1
                             for drone in self._drones:
                                 drone.advance_segment()
                             if self._pause_after_turn:
