@@ -63,7 +63,6 @@ class Simulator:
         try:
             self.coordinator.route_all_drones()
             self.paths = self.coordinator.paths
-            print(self.paths)
             self.reservations = self.coordinator.reservations
             self.makespan = self.coordinator.get_makespan()
             self.turn_log = self._get_movements_in_turn()

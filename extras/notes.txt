@@ -9,10 +9,10 @@ x Make end hub occupancy always count up
 x Make turn label
 x Make play/resume button
 x Make replay button
-- Per turn buttons prev/next
+x Per turn buttons prev/next
     x reverting to the first step: The first drone(s) does not retract but just stays at the second hub
     x After drones as done, reverting returns all done drones back to the end hub and start backtracking from there, disregarding how many turns before they reached the goal. I just need the drones that are delivered in the previous turn to come back.
     x Reversing mid-segment mess up turn/segment count
-    - _delivered_count tracking is not correct as it just tracks the previous number.
+    x _delivered_count tracking is not correct as it just tracks the previous number.
     x Check other capacity labels
     x turn label is changing after drones arrived and not when drone departures. Should only advance segment when next is pressed.

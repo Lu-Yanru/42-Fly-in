@@ -20,10 +20,6 @@ class Visualizer:
         self.all_hubs = map.hubs + [map.start, map.end]
         self.simulator = simulator
 
-        # Track capacity
-        self._reservations = simulator.reservations
-        self._done_count = 0  # how many drones have finished their path
-
         # pygame setup
         pygame.init()
         self._screen_w = 1280
@@ -56,12 +52,16 @@ class Visualizer:
         # UI
         self._paused = False
         self._pause_after_turn = False  # Pause once this turn is completed
-        self._pending_prev = False  # Reverse once this turn is completed
         self._reversing = False  # Whether the turn is currently reversing
         self._pause_button = pygame.Rect(self._screen_w - 150, 60, 100, 36)
         self._replay_button = pygame.Rect(self._screen_w - 150, 90, 100, 36)
         self._prev_button = pygame.Rect(self._screen_w - 170, 25, 50, 36)
         self._next_button = pygame.Rect(self._screen_w - 70, 25, 50, 36)
+
+        # Track capacity
+        self._reservations = simulator.reservations
+        # Track number of done drones per turn
+        self._done_count_tracker = self._build_done_count_tracker()
 
     def visualize(self) -> None:
         # pygame setup
@@ -75,11 +75,12 @@ class Visualizer:
             dt = clock.tick(60)
             self._current_turn = self._drones[-1].segment
 
+            print("done_count_tracker: ", self._done_count_tracker)
             print("current turn:", self._current_turn)
-            for d in self._drones:
-                print("drone", d.id, "segment", d.segment,
-                      "progress", d.progress, "wait", d.wait,
-                      "done", d.done, "reverse", d.reverse)
+            # for d in self._drones:
+            #     print("drone", d.id, "segment", d.segment,
+            #           "progress", d.progress, "wait", d.wait,
+            #           "done", d.done, "reverse", d.reverse)
 
             # poll for events
             # pygame.QUIT event means the user clicked X to close your window
@@ -93,20 +94,16 @@ class Visualizer:
                     if self._pause_button.collidepoint(event.pos):
                         self._paused = not self._paused
                         self._pause_after_turn = False
-                        self._pending_prev = False
 
                     # Reset game progress when mouse click
                     # happen in the replay button area
                     elif self._replay_button.collidepoint(event.pos):
-                        # self._current_turn = 0
-                        self._done_count = 0
                         self._paused = False
                         self._reversing = False
                         for drone in self._drones:
                             drone.segment = 0
                             drone.progress = 0
                             drone.done = False
-                            drone.just_arrived = False
                             drone.reverse = False
                             drone.wait = 0
 
@@ -149,29 +146,16 @@ class Visualizer:
                             drone.finish_reverse(self._current_turn)
 
                 else:
-                    all_at_start = all(
-                        d.done or d.progress <= 0.0 for d in self._drones
-                    )
-                    if all_at_start:
+                    if self._check_all_start():
                         for drone in self._drones:
                             drone.start_segment(self.simulator.makespan)
                     # Advance smooth animation every frame
                     for drone in self._drones:
                         drone.update(self._drone_speed)
-                        # Check if a drone is just arriving at the end hub
-                        # if drone.just_arrived and not drone.done:
-                        #     step = drone._steps[drone.segment]
-                        #     if step.dest == self.map.end.name \
-                        #             and not step.is_first_transit:
-                        #         self._done_count += 1
-                        #     drone.just_arrived = False
 
                     # Advance to next segment only after pause
                     # and all active drones have finished their current segment
-                    all_arrived = all(
-                        d.done or d.progress >= 1.0 for d in self._drones
-                    )
-                    if all_arrived:
+                    if self._check_all_arrived():
                         turn_timer += dt
                         if turn_timer >= self._turn_pause:
                             turn_timer = 0.0
@@ -219,7 +203,9 @@ class Visualizer:
             self._draw_hub_label(hub.name, x, y)
 
             if hub is self.map.end:
-                current = self._done_count
+                display_turn = self._current_turn \
+                    if self._check_all_arrived() else self._current_turn - 1
+                current = self._done_count_tracker[display_turn]
             else:
                 # Capacity label below the hub
                 current = \
@@ -295,9 +281,12 @@ class Visualizer:
             # Connection key is orderd alphabetically
             a = min(conn.src.name, conn.dest.name)
             b = max(conn.src.name, conn.dest.name)
-            current = self._reservations._conn_res.get((a, b,
-                                                        self._current_turn),
-                                                       0)
+            display_turn = self._current_turn - 1 \
+                if self._check_all_start() else self._current_turn
+            current = \
+                self._reservations._conn_res.get((a, b,
+                                                  display_turn),
+                                                 0)
             cap_text = f"{current}/{conn.capacity}"
             self._draw_capacity_conn_label(cap_text, mx, my)
 
@@ -335,8 +324,8 @@ class Visualizer:
     # Draw capacity label
     def _display_turn(self) -> int:
         """Return the turn whose occupancy should currently be displayed."""
-        all_arrived = all(d.done or d.progress >= 1.0 for d in self._drones)
-        return self._current_turn + 1 if all_arrived else self._current_turn
+        return self._current_turn + 1 \
+            if self._check_all_arrived() else self._current_turn
 
     def _draw_capacity_hub_label(self, text: str, x: float, y: float) -> None:
         """
@@ -363,6 +352,30 @@ class Visualizer:
                                                         padding * 2)
         pygame.draw.rect(self.screen, (30, 30, 30), bg_rect)
         self.screen.blit(label, label.get_rect(center=(x, y)))
+
+    # End hub capacity tracker helper function
+    def _build_done_count_tracker(self) -> list[int]:
+        """
+        Create a list of intergers with
+        the index be the animation segment number (self._current_turn)
+        and the value be the number of done drone in that segment.
+        """
+        res = [0] * len(self._drones[-1]._steps)
+        for drone in self._drones:
+            for step in drone._steps:
+                if step.dest == self.map.end.name \
+                        and not step.is_first_transit:
+                    if step.turn <= 1:
+                        res[step.turn - 1] += \
+                            self._reservations._hub_res.get((step.dest,
+                                                             step.turn),
+                                                            0)
+                    else:
+                        res[step.turn - 1] = res[step.turn - 2] \
+                            + self._reservations._hub_res.get((step.dest,
+                                                               step.turn),
+                                                              0)
+        return res
 
     # Layout helpers
     def _compute_layout(self) -> None:
@@ -509,3 +522,17 @@ class Visualizer:
         label = self._font_signs.render(text, True, "white")
         self.screen.blit(label,
                          label.get_rect(center=self._next_button.center))
+
+    # Other helpers
+    def _check_all_arrived(self) -> bool:
+        """
+        Check if all drones have arrive
+        at their destination hub this turn.
+        """
+        return all(d.done or d.progress >= 1.0 for d in self._drones)
+
+    def _check_all_start(self) -> bool:
+        """
+        Check if all drones are at the start of this turn.
+        """
+        return all(d.done or d.progress <= 0.0 for d in self._drones)

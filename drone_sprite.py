@@ -28,7 +28,6 @@ class DroneSprite:
         self.segment = 0  # index for animation steps
         self.progress = 0.0  # 0.0 at start of step, 1.0 at the end
         self.done = False
-        self.just_arrived = False
         self.reverse = False
         self.wait = 0  # How many turns from done until finish
 
@@ -71,17 +70,12 @@ class DroneSprite:
         """
         if self.done and not self.reverse:
             return
-        prev_progress = self.progress
         if self.reverse:
             self.progress = max(0.0, self.progress - speed)
         else:
             if self.progress >= 1.0:
                 return
             self.progress = min(1.0, self.progress + speed)
-        # Signal first arrival when progress in last frame <1.0
-        # and current progress >= 1.0
-        self.just_arrived = not self.reverse and prev_progress < 1.0 \
-            and self.progress >= 1.0
 
     def advance_segment(self) -> None:
         """
@@ -100,7 +94,6 @@ class DroneSprite:
 
     def start_reverse(self, turn: int) -> None:
         """Set up drone to animate backward to src_hub of the current step."""
-        self.just_arrived = False
         if not self.done:
             # If a drone is not done yet, start reversing
             # And if it is at the start of the current turn,
