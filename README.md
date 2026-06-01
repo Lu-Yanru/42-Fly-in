@@ -56,7 +56,7 @@ Three types of reservations are maintained:
 - Connection reservation: `(zone_a, zone_b, turn)`
 - Transit reservation:    `(from_zone, to_zone, turn)`
 
-Transit reservations handle the restricted zone commit rule: a drone entering transit toward a restricted zone reserves the mid-transit cell, preventing another drone from entering the same connection simultaneously, and the destination cell is checked at planning time to ensure it will be free on arrival.
+Transit reservations handle the restricted zone commit rule: a drone entering transit toward a restricted zone also reserves the restricted zone for the next turn. This ensures that the drone will be able to arrive at the restricted zone next turn.
 
 #### A* search algorithm
 Each drone is routed using the **A*** algorithm to find the shortest path from start to end hub on the space-time graph respecting capacity constraints in the reservation table.
@@ -69,6 +69,7 @@ A* maintains:
     - `h`: The heuristic from the current node to the end node. This is commonly the Eucliean distance between the current node and the end node in pathfinding. But in this case, the acutal distance between zones do not matter, only the zone types and number of turns. Therefore, the estimated cost is the fewest number of turns it takes from the current node to the end node. This is calculated by running a reverse Dijktra from the end zone once at the beginning, ignoring all other drones. This gives us the the minimum number of turns (costs) from every zone to the end zone.
 - A visited/cost record that tracks the best known `g` cost to reach each node, and which node it came from, so the path can be reconstructed at the end.
 
+A* step by step:
 - Step 1: Initialize by adding the start node to the priority queue and the visited/cost record.
 - Step 2: Calculate `f` for the neighboring nodes and add them to the priority queue, add new zones to the visited/cost record.
 - Step 3: Find neighbors of the node with the highest priority.
@@ -94,7 +95,7 @@ where:
 
 - Suboptimal because CA* is priority-ordered, i.e. it routes drones sequentially, and the order matters. The first drone gets its globally optimal path. Every subsequent drone gets the best path given the reservations left by earlier drones, but that local optimum may not be globally optimal.
 
-CA* offers a balanced solution between optimality, efficiency and implementation complexity. In practice, due to constraints of this project (all drones are the same, unique start and end hub means drones will always go towards the same direction), CA* finds the optimal solution in most cases and reliably meets the benchmarks. Thus, CA* is suitable for this project.
+CA* offers a balanced solution between optimality, efficiency and implementation complexity. In practice, due to constraints of this project, all drones have the same properties, start and end hubs, the order of scheduling does not matter. Thus CA* can always find the optimal solution in this project and reliably meets the benchmarks. Thus, CA* is suitable for this project.
 
 ### Visualization
 The step-by-step movements of the drones are visualized in the following formats:
@@ -118,11 +119,13 @@ Example:
     D1-roof2 D2-tunnelB
     D1-goal D2-goal
 
+The hub names are printed in the colors defined in the map file.
+
 #### Graphical interface
 To enhance the user experience, a graphical interface which displays the network and drone positions is also implemented using the `pygame` library.
 
 ##### Layout
-The hubs are represented as circles colored with their defined colors in the map file. If no color is specified for the specified color is not supported, gray is used as default.
+The hubs are represented as circles colored with their defined colors in the map file. If no color is specified or the specified color is not supported, gray is used as default.
 
 The positions and sized of the hubs are calculated relative to the window center, so the network is always centered and all hubs can fit inside the window.
 
