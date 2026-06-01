@@ -13,11 +13,8 @@ def make_graph(hubs: list[Hub], connections: list[Connection],
     return Graph(Map(nb_drones=1, start=start, end=end, hubs=hubs, connections=connections))
 
 def route(graph: Graph, nb_drones: int) -> list[list[tuple[str, int]]]:
-    coordinator = CAStarCoordinator()
-    coordinator.route_all_drones(
-        nb_drones=nb_drones,
-        graph=graph,
-    )
+    coordinator = CAStarCoordinator(nb_drones, graph)
+    coordinator.route_all_drones()
     return coordinator.paths
 
 # Basic tests
@@ -257,8 +254,8 @@ def test_makespan_equals_last_arrival_turn() -> None:
         start, end
     )
 
-    coordinator = CAStarCoordinator()
-    coordinator.route_all_drones(nb_drones=2, graph=graph)
+    coordinator = CAStarCoordinator(nb_drones=2, graph=graph)
+    coordinator.route_all_drones()
     makespan = coordinator.get_makespan()
 
     assert makespan == 2
