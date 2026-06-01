@@ -116,6 +116,7 @@ class Visualizer:
                 # happen in the replay button area
                 elif self._replay_button.collidepoint(event.pos):
                     self._paused = False
+                    self._pause_after_turn = False
                     self._reversing = False
                     self._turn_timer = 0.0
                     for drone in self._drones:
@@ -128,8 +129,8 @@ class Visualizer:
                 # Revert to previous turn and pause when mouse click
                 # happen in the prev button area
                 elif self._prev_button.collidepoint(event.pos):
+                    self._pause_after_turn = True
                     if self._current_turn > 0:
-                        self._pause_after_turn = True
                         self._paused = False
                         self._reversing = True
                         for drone in self._drones:
@@ -179,6 +180,7 @@ class Visualizer:
                     self.turn_timer = 0.0
                     for drone in self._drones:
                         drone.advance_segment()
+
                     if self._pause_after_turn:
                         self._paused = True
                         self._pause_after_turn = False
