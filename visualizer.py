@@ -177,7 +177,7 @@ class Visualizer:
             if self._check_all_arrived():
                 self._turn_timer += dt
                 if self._turn_timer >= self._turn_pause:
-                    self.turn_timer = 0.0
+                    self._turn_timer = 0.0
                     for drone in self._drones:
                         drone.advance_segment()
 
@@ -187,7 +187,7 @@ class Visualizer:
             # Reset turn_timer if there are still
             # drones moving in the segment
             else:
-                self.turn_timer = 0.0
+                self._turn_timer = 0.0
 
     # Drawing map
     # Draw hubs
