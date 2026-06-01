@@ -18,10 +18,6 @@ def main() -> None:
         simulator = Simulator(map)
         simulator.print_log()
         simulator.compute_metrics()
-        print(simulator.reservations._hub_res)
-        print(simulator.reservations._conn_res)
-        print(simulator.reservations._transit_res)
-        print(simulator.paths)
         if parser.args.visualize:
             visualizer = Visualizer(map, simulator)
             visualizer.visualize()
@@ -33,8 +29,8 @@ def main() -> None:
         print(e, file=sys.stderr)
     except KeyboardInterrupt:
         print("Interrupted by user.", file=sys.stderr)
-    # except Exception as e:
-    #     print("An unexpected error occured: ", e, file=sys.stderr)
+    except Exception as e:
+        print("An unexpected error occured: ", e, file=sys.stderr)
 
 
 if __name__ == "__main__":

@@ -27,6 +27,7 @@ class Visualizer:
         self._padding = 100
         self.screen = pygame.display.set_mode((self._screen_w, self._screen_h))
         pygame.display.set_caption("Fly-in")
+        self._running = True
 
         # Color, font and layout
         self._default_color = "gray"
@@ -38,6 +39,7 @@ class Visualizer:
         # Animation
         self._drone_speed = drone_speed  # how much progress per frame 0.0-1.0
         self._turn_pause = turn_pause  # how many ms pause per turn
+        self._turn_timer = 0.0
 
         self._hub_positions: dict[str, tuple[int, int]] = {
             hub.name: (self._calc_x_pos(hub.x), self._calc_y_pos(hub.y))
@@ -66,108 +68,17 @@ class Visualizer:
     def visualize(self) -> None:
         # pygame setup
         clock = pygame.time.Clock()
-        running = True
-        turn_timer = 0.0
 
-        while running:
+        while self._running:
             # Limits FPS to 60
             # Delta time in miliseconds since last frame
             dt = clock.tick(60)
             self._current_turn = self._drones[-1].segment
 
-            print("done_count_tracker: ", self._done_count_tracker)
-            print("current turn:", self._current_turn)
-            # for d in self._drones:
-            #     print("drone", d.id, "segment", d.segment,
-            #           "progress", d.progress, "wait", d.wait,
-            #           "done", d.done, "reverse", d.reverse)
+            self._poll_event()
 
-            # poll for events
-            # pygame.QUIT event means the user clicked X to close your window
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-
-                # Set game to be paused/resume when mouse click
-                # happen in the paused/resume button area
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if self._pause_button.collidepoint(event.pos):
-                        self._paused = not self._paused
-                        self._pause_after_turn = False
-
-                    # Reset game progress when mouse click
-                    # happen in the replay button area
-                    elif self._replay_button.collidepoint(event.pos):
-                        self._paused = False
-                        self._reversing = False
-                        for drone in self._drones:
-                            drone.segment = 0
-                            drone.progress = 0
-                            drone.done = False
-                            drone.reverse = False
-                            drone.wait = 0
-
-                    # Revert to previous turn and pause when mouse click
-                    # happen in the prev button area
-                    elif self._prev_button.collidepoint(event.pos):
-                        if self._current_turn > 0:
-                            self._pause_after_turn = True
-                            self._paused = False
-                            self._reversing = True
-                            for drone in self._drones:
-                                drone.start_reverse(self._current_turn)
-                            turn_timer = self._turn_pause
-
-                    # Advance to next turn and pause when mouse click
-                    # happen in the paused/resume button area
-                    elif self._next_button.collidepoint(event.pos):
-                        self._paused = False
-                        self._reversing = False
-                        for drone in self._drones:
-                            drone.reverse = False
-                        self._pause_after_turn = True
-                        turn_timer = self._turn_pause
-
-            # Drone animation
             if not self._paused:
-                if self._reversing:
-                    for drone in self._drones:
-                        drone.update(self._drone_speed)
-
-                    all_reversed = all(
-                        d.is_reverse_complete()
-                        for d in self._drones
-                    )
-                    if all_reversed:
-                        self._reversing = False
-                        self._paused = True
-                        self._pause_after_turn = False
-                        for drone in self._drones:
-                            drone.finish_reverse(self._current_turn)
-
-                else:
-                    if self._check_all_start():
-                        for drone in self._drones:
-                            drone.start_segment(self.simulator.makespan)
-                    # Advance smooth animation every frame
-                    for drone in self._drones:
-                        drone.update(self._drone_speed)
-
-                    # Advance to next segment only after pause
-                    # and all active drones have finished their current segment
-                    if self._check_all_arrived():
-                        turn_timer += dt
-                        if turn_timer >= self._turn_pause:
-                            turn_timer = 0.0
-                            for drone in self._drones:
-                                drone.advance_segment()
-                            if self._pause_after_turn:
-                                self._paused = True
-                                self._pause_after_turn = False
-                    # Reset turn_timer if there are still
-                    # drones moving in the segment
-                    else:
-                        turn_timer = 0.0
+                self._animate_drones(dt)
 
             # fill the screen with a color
             # to wipe away anything from last frame
@@ -186,6 +97,95 @@ class Visualizer:
             pygame.display.flip()
 
         pygame.quit()
+
+    def _poll_event(self) -> None:
+        """Detect pygame event and set corresponding variables."""
+        # pygame.QUIT event means the user clicked X to close your window
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self._running = False
+
+            # Set game to be paused/resume when mouse click
+            # happen in the paused/resume button area
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self._pause_button.collidepoint(event.pos):
+                    self._paused = not self._paused
+                    self._pause_after_turn = False
+
+                # Reset game progress when mouse click
+                # happen in the replay button area
+                elif self._replay_button.collidepoint(event.pos):
+                    self._paused = False
+                    self._reversing = False
+                    self._turn_timer = 0.0
+                    for drone in self._drones:
+                        drone.segment = 0
+                        drone.progress = 0
+                        drone.done = False
+                        drone.reverse = False
+                        drone.wait = 0
+
+                # Revert to previous turn and pause when mouse click
+                # happen in the prev button area
+                elif self._prev_button.collidepoint(event.pos):
+                    if self._current_turn > 0:
+                        self._pause_after_turn = True
+                        self._paused = False
+                        self._reversing = True
+                        for drone in self._drones:
+                            drone.start_reverse(self._current_turn)
+                        self._turn_timer = self._turn_pause
+
+                # Advance to next turn and pause when mouse click
+                # happen in the paused/resume button area
+                elif self._next_button.collidepoint(event.pos):
+                    self._paused = False
+                    self._reversing = False
+                    for drone in self._drones:
+                        drone.reverse = False
+                    self._pause_after_turn = True
+                    self._turn_timer = self._turn_pause
+
+    def _animate_drones(self, dt: int) -> None:
+        """Create drone animations based on the variables."""
+        if self._reversing:
+            for drone in self._drones:
+                drone.update(self._drone_speed)
+
+            all_reversed = all(
+                d.is_reverse_complete()
+                for d in self._drones
+            )
+            if all_reversed:
+                self._reversing = False
+                self._paused = True
+                self._pause_after_turn = False
+                for drone in self._drones:
+                    drone.finish_reverse(self._current_turn)
+
+        else:
+            if self._check_all_start():
+                for drone in self._drones:
+                    drone.start_segment(self.simulator.makespan)
+            # Advance smooth animation every frame
+            for drone in self._drones:
+                drone.update(self._drone_speed)
+
+            # Advance to next segment only after pause
+            # and all active drones have finished their current segment
+            if self._check_all_arrived():
+                self._turn_timer += dt
+                if self._turn_timer >= self._turn_pause:
+                    self.turn_timer = 0.0
+                    for drone in self._drones:
+                        drone.advance_segment()
+                    if self._pause_after_turn:
+                        self._paused = True
+                        self._pause_after_turn = False
+            # Reset turn_timer if there are still
+            # drones moving in the segment
+            else:
+                self.turn_timer = 0.0
 
     # Drawing map
     # Draw hubs
