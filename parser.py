@@ -66,6 +66,12 @@ class Parser:
             help="Toggle to display the graphical interface."
         )
 
+        parser_args.add_argument(
+            "-c", "--capacity-info",
+            action="store_true",
+            help="Toggle to display capacity information of each hub per turn."
+        )
+
         return parser_args.parse_args()
 
     def _read_file(self) -> list[str]:

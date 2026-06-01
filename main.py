@@ -15,7 +15,7 @@ def main() -> None:
 
     try:
         map = parser.parse_map()
-        simulator = Simulator(map)
+        simulator = Simulator(map, parser.args.capacity_info)
         simulator.print_log()
         simulator.compute_metrics()
         if parser.args.visualize:

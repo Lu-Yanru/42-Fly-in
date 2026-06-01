@@ -46,7 +46,8 @@ class Style:
 
 
 class Simulator:
-    def __init__(self, map: Map, use_color: bool = True) -> None:
+    def __init__(self, map: Map, capacity_info: bool = False,
+                 use_color: bool = True) -> None:
         """
         Create a Simulator with a Map object.
         Contains a Graph object and a CAStartCoordinator object
@@ -57,8 +58,11 @@ class Simulator:
         self._unsupported_color: set[str] = set()
 
         self.nb_drones = map.nb_drones
+        self.map = map
         self.graph = Graph(map)
         self.coordinator = CAStarCoordinator(map.nb_drones, self.graph)
+
+        self.capacity_info = capacity_info
 
         try:
             self.coordinator.route_all_drones()
@@ -75,10 +79,14 @@ class Simulator:
         based on the list of paths.
         """
         for turn, movements in self.turn_log.items():
+            print("Turn", turn, " ", end="")
             for idx, movement in enumerate(movements):
                 print(movement, end="")
                 if idx < len(movements) - 1:
                     print(" ", end="")
+
+            if self.capacity_info:
+                self._print_capacity_info(turn)
             print("")
 
     def compute_metrics(self) -> None:
@@ -220,3 +228,29 @@ class Simulator:
                 else:
                     total_cost += 1.0
         return total_cost
+
+    def _print_capacity_info(self, turn: int) -> None:
+        """
+        Print capacity info of active hubs and connections for a certain turn.
+        """
+        # Get all active hubs this turn
+        for hub_name, hub in self.graph.hubs.items():
+            if hub_name in (self.graph.start_name, self.graph.end_name):
+                continue
+            count = self.reservations._hub_res.get((hub_name, turn), 0)
+            if count > 0:
+                print(f" Zone {self._color_zone(hub_name)}: "
+                      f"{count}/{hub.max_drones} drones",
+                      end="")
+
+        # Get all active connections this turn
+        for conn in self.graph.connections:
+            a = min(conn.src.name, conn.dest.name)
+            b = max(conn.src.name, conn.dest.name)
+            count = self.reservations._conn_res.get((a, b, turn - 1), 0)
+            if count > 0:
+                print(f" Connection {self._color_zone(a)}-"
+                      f"{self._color_zone(b)}: "
+                      f"{count}/{conn.capacity}"
+                      " capacity used",
+                      end="")

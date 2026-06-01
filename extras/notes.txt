@@ -16,3 +16,9 @@ x Per turn buttons prev/next
     x _delivered_count tracking is not correct as it just tracks the previous number.
     x Check other capacity labels
     x turn label is changing after drones arrived and not when drone departures. Should only advance segment when next is pressed.
+
+x Live coding:
+add a "--capacity-info" flag that displays capacity information during simulation,
+such as "Zone X: Y/Z drones, Connection A-B: Y/Z capacity used" for each turn.
+For example, "./main.py --capacity-info map.txt" should output the normal simulation plus
+capacity usage information.
