@@ -284,7 +284,8 @@ class Visualizer:
             a = min(conn.src.name, conn.dest.name)
             b = max(conn.src.name, conn.dest.name)
             display_turn = self._current_turn - 1 \
-                if self._check_all_start() else self._current_turn
+                if self._check_all_start() and not self._check_all_done() \
+                else self._current_turn
             current = \
                 self._reservations._conn_res.get((a, b,
                                                   display_turn),
@@ -538,3 +539,9 @@ class Visualizer:
         Check if all drones are at the start of this turn.
         """
         return all(d.done or d.progress <= 0.0 for d in self._drones)
+
+    def _check_all_done(self) -> bool:
+        """
+        Check if all drones are done.
+        """
+        return all(d.done for d in self._drones)
