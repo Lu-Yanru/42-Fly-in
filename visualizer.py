@@ -206,7 +206,8 @@ class Visualizer:
 
             if hub is self.map.end:
                 display_turn = self._current_turn \
-                    if self._check_all_arrived() else self._current_turn - 1
+                    if self._check_all_arrived() or self._current_turn == 0 \
+                    else self._current_turn - 1
                 current = self._done_count_tracker[display_turn]
             else:
                 # Capacity label below the hub
